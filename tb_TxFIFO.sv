@@ -11,6 +11,7 @@ reg [31:0] FIFO [9] = {{32{1'b1}},{32{1'b0}},{32{1'b1}},{32{1'b0}},{32{1'b1}},{3
 wire dout;
 wire ws;
 
+
 int i=0;
 
 assign din = FIFO[i];
@@ -20,14 +21,14 @@ TxFIFO U0
     .rst (rst),
     .wclk (wclk),
     .rclk (rclk),
-    .en (1'b1),
+    .wen (1'b1),
     .stereo (1'b1),
-    .standard (2'b00),
-    .dinL (din),
-    .dinR (din),
+    .standard (2'b10),
+    .mode(2'b11),
+    .din (din),
     .dout (dout),
     .ws (ws),
-    .word_size (2'b11)
+    .frame_size (1'b1)
 );
 
 localparam rCLK_PERIOD = 10;
@@ -46,11 +47,11 @@ initial begin
     #(wCLK_PERIOD) rst<=1;
     #(wCLK_PERIOD) rst<=0;
     // din=FIFO[0];
-    foreach (U0.FIFO[i]) $display("FIFO[%0d]: %32b",i,U0.FIFO[i]);
+    foreach (U0.FIFO[i]) $display("TxFIFO[%0d]: %32b",i,U0.FIFO[i]);
 
     repeat(10) begin
         @(posedge wclk);
-        // din=FIFO[i];
+        //din=FIFO[i];
         if (i<8) i++;
     end
 

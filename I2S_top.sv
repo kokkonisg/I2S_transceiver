@@ -3,14 +3,7 @@
 `include "Reg_Interface.sv"
 `include "freq_divider.sv"
 
-package ctrl_pkg;
-    typedef enum bit {hz44=1'b0, hz48=1'b1} sample_rate_enum;
-    typedef enum bit [1:0] {w16bits=2'b00, w24bits=2'b01, w32bits=2'b10} word_size_enum;
-    typedef enum bit {f16bits=1'b0, f32bits=1'b1} frame_size_enum;
-    typedef enum bit [1:0] {I2S=2'b00, MSB=2'b01, LSB=2'b10} standard_enum;
-    typedef enum bit [1:0] {SR=2'b00, MR=2'b10, ST=2'b01, MT=2'b11} mode_enum;  
-endpackage
-
+import ctrl_pkg::*;
 
 module I2S_top(
     input pclk, penable, preset, pwrite,
@@ -71,11 +64,11 @@ function logic [31:0] postprocess;
     postprocess = dout;
 endfunction
 
-ctrl_pkg::sample_rate_enum sample_rate;
-ctrl_pkg::word_size_enum word_size;
-ctrl_pkg::frame_size_enum frame_size;
-ctrl_pkg::standard_enum standard;
-ctrl_pkg::mode_enum mode;
+sample_rate_enum sample_rate;
+word_size_enum word_size;
+frame_size_enum frame_size;
+standard_enum standard;
+mode_enum mode;
 logic stereo, mclk_en, mute, stop;
 
 logic rst, Tx_wen, Tx_ren, Rx_ren, Rx_wen, reg_wen, reg_ren;
@@ -139,8 +132,9 @@ RxFIFO Urx(
     .empty(Rx_empty)
 );
 
-always_ff @(posedge pclk)
-    if (preset) begin
+
+always_ff @(negedge pclk) begin
+	if (preset) begin
         Tx_wen<=1'b0;
         Rx_ren<=1'b0;
         reg_wen<=1'b0;
@@ -148,9 +142,7 @@ always_ff @(posedge pclk)
         occRx<=1'b0;
         occTx<=1'b0;
     end
-
-always_ff @(negedge pclk) begin
-
+    
     if (!Tx_full && occTx) begin
         Tx_wen <= 1'b1;
         occTx <= 1'b0;

@@ -1,3 +1,4 @@
+
 import ctrl_pkg::*;
 
 module RxFIFO(
@@ -23,6 +24,8 @@ module RxFIFO(
 
 	//**Reading data from FIFO**
 	always_ff @(posedge rclk) begin
+		if (rst) rCnt <= 4'b0;
+		
         if (ren && !empty) begin
             dout <= FIFO[rCnt[2:0]];
             rCnt <= rCnt+1;          
@@ -42,6 +45,12 @@ module RxFIFO(
     end
 
     always_ff @(posedge wclk) begin
+    	if (rst) begin
+            foreach (FIFO[i]) FIFO[i]<=32'b0;
+            wCnt_s <= (frame_size==1'b0)? 5'd15 : 5'd31;
+            wCnt_p <= 4'd0;
+        end
+        
         if (wen) begin
             if (stereo)
                 if (!(ws ^ wCnt_p[2:0]%2))
@@ -75,13 +84,7 @@ module RxFIFO(
                 ws_temp <= 1'bx;
     end
 
-    always_ff @(rst)
-        if (rst) begin
-            foreach (FIFO[i]) FIFO[i]=32'b0;
-            wCnt_s <= (frame_size==1'b0)? 5'd15 : 5'd31;
-            wCnt_p <= 4'd0;
-            rCnt <= 4'd0;
-        end
+        
 
 	// //**Writing data to FIFO**
 	// always_ff @(posedge wclk) begin

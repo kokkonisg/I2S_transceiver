@@ -1,3 +1,4 @@
+
 import ctrl_pkg::*;
 
 module TxFIFO(
@@ -22,6 +23,8 @@ module TxFIFO(
 
 	//**Writing data to FIFO**
 	always_ff @(posedge wclk) begin: input_data
+		if (rst) wCnt <= 4'b0;
+		
         if (wen && !full) begin
             FIFO[wCnt[2:0]] <= din;
             wCnt <= wCnt+1;
@@ -41,6 +44,13 @@ module TxFIFO(
     end
 
     always_ff @(negedge rclk) begin: output_data      
+    	if (rst) begin
+            foreach (FIFO[i]) FIFO[i]=32'b0;
+            rCnt_s <= (frame_size==1'b0)? 5'd15 : 5'd31;
+            rCnt_p <= 4'd0;
+            wCnt <= 4'd0;
+        end
+    
         if (ren) begin
             if (stereo)
                 // if (!(ws ^ rCnt_p[2:0]%2))
@@ -77,14 +87,7 @@ module TxFIFO(
                 ws_temp <= 1'bx;
     end
 
-    always_ff @(posedge wclk) begin: reset_behavior
-        if (rst) begin
-            foreach (FIFO[i]) FIFO[i]=32'b0;
-            rCnt_s <= (frame_size==1'b0)? 5'd15 : 5'd31;
-            rCnt_p <= 4'd0;
-            wCnt <= 4'd0;
-        end
-    end
+  
 
 	// //**Reading data from FIFO**
 	// always_ff @(negedge rclk) begin      

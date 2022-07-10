@@ -15,8 +15,10 @@ module TxFIFO(
     logic [4:0] r_ptr_ser;
     logic [3:0] w_ptr;
 
-    assign full = ({!w_ptr[3],w_ptr[2:0]} == r_ptr_par);
-    assign empty = (w_ptr == r_ptr_par);
+    assign full_act = ({!w_ptr[3],w_ptr[2:0]} == r_ptr_par);
+    synch full_synch (pclk, full_act, full);
+    assign empty_act = (w_ptr == r_ptr_par);
+    synch empty_synch (sclk, empty_act, empty);
 
     always_ff @(posedge wclk, negedge rst_) begin: wrt_data
         if(!rst_) begin
@@ -90,4 +92,16 @@ module RxFIFO(
         end
     end
 
+endmodule
+
+module synch(
+	input logic clk, act,
+	output logic f);
+
+	logic d, q;
+	assign f = act || d || q;
+	always @(posedge clk) begin
+		q<=act;
+        d<=q;
+	end
 endmodule

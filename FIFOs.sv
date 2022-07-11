@@ -4,7 +4,7 @@ import ctrl_pkg::*;
 
 module TxFIFO(
     input logic wclk, rclk, rst_, write, read,
-    [31:0] logic din,
+    logic [31:0] din,
     OP_t OP,
     output logic full, empty, dout,
     inout logic ws
@@ -34,7 +34,7 @@ module TxFIFO(
         if(!rst_) begin
             r_ptr_par <= 4'b0;
             unique if (OP.frame_size == f16bits) r_ptr_ser <= 5'd15;
-            else if (OP.frame_size == f31bits) r_ptr_ser <= 5'd31;
+            else if (OP.frame_size == f32bits) r_ptr_ser <= 5'd31;
         end else if (read && !empty) begin
             dout <= FIFO[r_ptr_par[2:0]][r_ptr_ser];
 
@@ -42,7 +42,7 @@ module TxFIFO(
             else begin
                 r_ptr_par <= r_ptr_par + 1'b1;
                 unique if (OP.frame_size == f16bits) r_ptr_ser <= 5'd15;
-                else if (OP.frame_size == f31bits) r_ptr_ser <= 5'd31;
+                else if (OP.frame_size == f32bits) r_ptr_ser <= 5'd31;
             end
         end
     end
@@ -69,7 +69,7 @@ module RxFIFO(
         if(!rst_)
             r_ptr <= 4'b0;
         else if (read && !empty) begin
-            dout <= FIFO[r_ptr_par[2:0]];
+            dout <= FIFO[r_ptr[2:0]];
             r_ptr <= r_ptr + 1'b1;
         end
     end
@@ -79,15 +79,15 @@ module RxFIFO(
             FIFO <= '{default: 0};
             w_ptr_par <= 4'b0;
             unique if (OP.frame_size == f16bits) w_ptr_ser <= 5'd15;
-            else if (OP.frame_size == f31bits) w_ptr_ser <= 5'd31;
+            else if (OP.frame_size == f32bits) w_ptr_ser <= 5'd31;
         end else if (write && !full) begin
-            FIFO[w_ptr[2:0]][w_ptr_ser] <= din;
+            FIFO[w_ptr_par[2:0]][w_ptr_ser] <= din;
 
             if (w_ptr_ser > 0) w_ptr_ser <= w_ptr_ser - 1'b1;
             else begin
                 w_ptr_par <= w_ptr_par + 1'b1;
                 unique if (OP.frame_size == f16bits) w_ptr_ser <= 5'd15;
-                else if (OP.frame_size == f31bits) w_ptr_ser <= 5'd31;
+                else if (OP.frame_size == f32bits) w_ptr_ser <= 5'd31;
             end
         end
     end

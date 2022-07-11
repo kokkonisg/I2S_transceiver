@@ -1,7 +1,7 @@
 `include "package.sv"
 import ctrl_pkg::*;
 
-module test_clk_div(pclk, sclk);
+/*module test_clk_div(pclk, sclk);
 	input	wire	pclk;
 	output	reg		sclk;
 
@@ -17,7 +17,7 @@ module test_clk_div(pclk, sclk);
 	always @(posedge pclk)
    		sclk <= (counter == 1);
         
-endmodule
+endmodule*/
 
 module clk_div(
 	input logic pclk, rst_,
@@ -26,9 +26,10 @@ module clk_div(
 );
 	logic [5:0] counter;
 	logic tff1, tff2;
-	logic ev_clk;
+	logic ev_clk; 
+	logic div1,div2;
 
-	assign sclk = (N%2) ? ev_clk : div1^div2;
+	assign sclk = (!N[0]) ? ev_clk : div1^div2;
 
 	always_ff @(posedge pclk, negedge rst_) begin
 		if (!rst_) begin
@@ -40,7 +41,7 @@ module clk_div(
 	end
 
 	always_ff @(posedge pclk)
-		case (N%2)
+		case (N[0])
 			1'b0: 
 				if (counter==(N/2-1)) begin
 					counter <= 0;
@@ -51,44 +52,62 @@ module clk_div(
 			end
 		endcase
 
-	always @(negedge pclk)
-		if (N%2==1'b1 && counter==(N+1)/2) div2 <= ~div2;	
+	always_ff @(negedge pclk)
+		if (N[0]==1'b1 && counter==(N+1)/2) div2 <= ~div2;	
 
 endmodule	
 
 module ws_gen(
 	input logic clk, rst_, en,
 	OP_t OP,
-	output logic ws, ws_old
+	output logic ws
 	);
 
 	logic [4:0] cnt;
-	logic b = (OP.frame_size==f16bits) ? 1'b0 : 1'b1;
 	
 	always_ff @(posedge clk, negedge rst_) begin
 		if (!rst_) {ws, cnt} <= 0;
 		else if (en) begin
-			if (cnt=={b,4'hf}) ws <= ~ws;
+			if ((OP.frame_size==f32bits && cnt==5'h1f) || (OP.frame_size==f16bits && cnt[3:0]==4'hf)) ws <= ~ws;
 			cnt <= cnt + 1;
 		end
 	end
 endmodule
 
 module ws_tracker(
-	input logic ws,
+	input logic clk, rst_, ws,
 	OP_t OP,
 	output logic ws_change
 );
 
 logic [4:0] cnt;
-logic b = (OP.frame_size==f16bits) ? 1'b0 : 1'b1;
+logic ws_old;
 assign ws_change = ws ^ ws_old;
 
 always_ff @(posedge clk, negedge rst_) begin
 		if (!rst_) cnt <= 0;
 		else begin
-			if (cnt=={b,4'hf}) ws_old <= ws;
+			if ((OP.frame_size==f32bits && cnt==5'h1f) || (OP.frame_size==f16bits && cnt[3:0]==4'hf)) ws_old <= ws;
 			cnt <= cnt + 1;
 		end
 	end
+endmodule
+
+
+module tbench;
+logic clk=0;
+logic rst_=1;
+OP_t OP = '{default: 0, frame_size: f32bits};
+logic en =1'b1;
+logic ws, ws_change;
+
+ws_gen u1(.*);
+ws_tracker u2(.*);
+
+always forever #1 clk <= ~clk;
+
+initial begin
+@(negedge clk) rst_<=0;
+@(posedge clk) rst_<=1;
+end
 endmodule

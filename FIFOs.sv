@@ -1,24 +1,25 @@
 `include "package.sv"
+`include "freq_divider.sv"
 
 import ctrl_pkg::*;
 
 module TxFIFO(
-    input logic wclk, rclk, rst_, write, read,
+    input logic wclk, rclk, rst_, write, read, ws,
     logic [31:0] din,
     OP_t OP,
-    output logic full, empty, dout,
-    inout logic ws
+    output logic full, empty, dout
     );
 
     logic [31:0] FIFO [7:0];
     logic [3:0] r_ptr_par;
     logic [4:0] r_ptr_ser;
     logic [3:0] w_ptr;
+    logic full_act, empty_act;
 
     assign full_act = ({!w_ptr[3],w_ptr[2:0]} == r_ptr_par);
-    synch full_synch (pclk, full_act, full);
+    synch full_synch (wclk, full_act, rst_, full);
     assign empty_act = (w_ptr == r_ptr_par);
-    synch empty_synch (sclk, empty_act, empty);
+    synch empty_synch (rclk, empty_act, rst_, empty);
 
     always_ff @(posedge wclk, negedge rst_) begin: wrt_data
         if(!rst_) begin
@@ -50,20 +51,24 @@ module TxFIFO(
 endmodule
 
 module RxFIFO(
-    input logic wclk, rclk, rst_, write, read, din,
+    input logic wclk, rclk, rst_, write, read, ws, din,
     OP_t OP,
     output logic full, empty,
-    logic [31:0] dout,
-    inout logic ws
+    logic [31:0] dout
     );
 
     logic [31:0] FIFO [7:0];
     logic [3:0] w_ptr_par;
     logic [4:0] w_ptr_ser;
     logic [3:0] r_ptr;
+    logic full_act, empty_act;
 
-    assign full = ({!w_ptr_par[3],w_ptr_par[2:0]} == r_ptr);
-    assign empty = (w_ptr_par == r_ptr);
+    assign full_act = ({!w_ptr_par[3],w_ptr_par[2:0]} == r_ptr);
+    synch full_synch (wclk, full_act, rst_, full);
+    assign empty_act = (w_ptr_par == r_ptr);
+    synch empty_synch (rclk, empty_act, rst_, empty);
+
+
 
     always_ff @(negedge rclk, negedge rst_) begin: rd_data
         if(!rst_)
@@ -95,13 +100,42 @@ module RxFIFO(
 endmodule
 
 module synch(
-	input logic clk, act,
+	input logic clk, act, rst_,
 	output logic f);
 
 	logic d, q;
 	assign f = act || d || q;
-	always @(posedge clk) begin
-		q<=act;
-        d<=q;
-	end
+	always @(posedge clk, negedge rst_)
+        if (!rst_) {d, q} <= 0;
+        else begin
+            q<=act;
+            d<=q;
+        end
+endmodule
+
+
+module f_tbench;
+    logic pclk, sclk, rst_, read, write, full, empty, ws,en;
+    logic [31:0] din=$urandom; logic dout;
+    OP_t OP = '{default: 0};
+
+    initial begin
+        pclk<=0;
+        forever #2 pclk <= ~pclk;
+    end
+
+    clk_div div(.*,.N(6'h2));
+    TxFIFO fifo(.*,.wclk(pclk),.rclk(sclk));
+    ws_gen wsg(.*,.clk(sclk));
+    ws_tracker wst(.*,.clk(sclk),.ws_change(read));
+
+    always begin
+        rst_ <= 1;
+        @(posedge pclk) rst_ <=0;
+        @(posedge pclk) rst_<=1;
+        @(posedge pclk) write<=1;
+        repeat (5) @(posedge pclk); write<=0;
+        @(posedge pclk) en<=1;
+        repeat (500) @(posedge pclk);
+    end
 endmodule

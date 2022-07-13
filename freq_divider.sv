@@ -66,7 +66,7 @@ module ws_gen(
 	logic [4:0] cnt;
 	
 	always_ff @(posedge clk, negedge rst_) begin
-		if (!rst_) {ws, cnt} <= 0;
+		if (!rst_) {ws, cnt} <= {1'b1,5'b0};
 		else if (en) begin
 			if ((OP.frame_size==f32bits && cnt==5'h1f) || (OP.frame_size==f16bits && cnt[3:0]==4'hf)) ws <= ~ws;
 			cnt <= cnt + 1;
@@ -80,16 +80,11 @@ module ws_tracker(
 	output logic ws_change
 );
 
-logic [4:0] cnt;
 logic ws_old;
 assign ws_change = ws ^ ws_old;
 
-always_ff @(posedge clk, negedge rst_) begin
-		if (!rst_) cnt <= 0;
-		else begin
-			if ((OP.frame_size==f32bits && cnt==5'h1f) || (OP.frame_size==f16bits && cnt[3:0]==4'hf)) ws_old <= ws;
-			cnt <= cnt + 1;
-		end
+always_ff @(posedge clk) begin
+		ws_old <= ws;
 	end
 endmodule
 

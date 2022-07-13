@@ -1,5 +1,5 @@
-`include "RxFIFO.sv"
-`include "TxFIFO.sv"
+`include "package.sv"
+`include "FIFOs.sv"
 `include "Reg_Interface.sv"
 `include "freq_divider.sv"
 

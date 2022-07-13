@@ -25,7 +25,6 @@ module clk_div(
 	output logic sclk
 );
 	logic [5:0] counter;
-	logic tff1, tff2;
 	logic ev_clk; 
 	logic div1,div2;
 
@@ -33,7 +32,7 @@ module clk_div(
 
 	always_ff @(posedge pclk, negedge rst_) begin
 		if (!rst_) begin
-			{counter, tff1, tff2, ev_clk} <= 9'b0;
+			{counter, ev_clk} <= 0;
 			{div1, div2} <= 2'b11;
 		end else begin
 			counter <= (counter>=N-1) ? 6'b0 : counter + 1;
@@ -76,15 +75,15 @@ endmodule
 
 module ws_tracker(
 	input logic clk, rst_, ws,
-	OP_t OP,
 	output logic ws_change
 );
 
-logic ws_old;
-assign ws_change = ws ^ ws_old;
+	logic ws_old;
+	assign ws_change = ws ^ ws_old;
 
-always_ff @(posedge clk) begin
-		ws_old <= ws;
+	always_ff @(posedge clk, negedge rst_) begin
+		if (!rst_) ws_old <= 1'b0;
+		else ws_old <= ws;
 	end
 endmodule
 

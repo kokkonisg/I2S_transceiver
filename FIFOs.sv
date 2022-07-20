@@ -139,3 +139,33 @@ module f_tbench;
         repeat (500) @(posedge pclk);
     end
 endmodule
+
+module TxFIFOmem #(WIDTH = 32, ADDR = 3) (
+    input logic wclk, rclk, rst_, wr_en, rd_en, full, empty,
+    logic [ADDR-1:0] wadr, radr,  
+    logic [WIDTH-1:0] din,
+    OP_t OP,
+    output logic dout, rdy);
+
+    logic [WIDTH-1:0] FIFO [(1<<ADDR)-1:0];
+    logic ptr;
+    logic maxp = (OP.frame_size==f16bits) ? 15 : 31;
+    assign done = (ptr == 0);
+
+    always_ff @(posedge wclk or negedge rst_) begin : proc_write
+        if(~rst_) begin
+            FIFO <= '{default: 0};
+        end else if (wr_en && !full) begin
+            FIFO[wadr] <= din;
+        end
+    end
+
+    always_ff @(negedge rclk) begin : proc_read
+        if (~rst_) ptr <= WIDTH-1;
+        else if (rd_en && !empty) begin
+            dout <= FIFO[radr][ptr];
+            ptr <= (ptr>0) ? ptr-1 : maxp;
+        end
+    end
+
+endmodule

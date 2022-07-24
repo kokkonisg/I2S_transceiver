@@ -11,5 +11,6 @@ package ctrl_pkg;
 	frame_size_t frame_size;
 	mode_t mode;
 	standard_t standard;
+	logic rst, stop, mute, mclk_en, stereo;
         }OP_t; OP_t OP;
 endpackage

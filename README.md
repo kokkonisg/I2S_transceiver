@@ -14,7 +14,7 @@ clock: currently mclk only allowed on 32mhz pclk to avoid division by non-int nu
 as afisoume gia mclk mono ta 32 giati etsi ki alliws ta alla einai poly mikra
 
  FIFOs: currently pointer change with if (frame size) ... Is there a better way for ex. custom pointer width depending on frame_size?
- fia FIFOs na kanw gray counters kai na diavasw to paper
+ gia FIFOs na kanw gray counters kai na diavasw to paper
 
  synch: keeping full and empty signals high for 2 clocks more than the  actual. Doing that with 3 ors on delaying ffs. Is that ok? hazards?
-overdwesign des to paper kai gray counters pou den ekana lmao
+overdesign des to paper kai gray counters pou den ekana lmao

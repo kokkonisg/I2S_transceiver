@@ -12,13 +12,13 @@ module Reg_Interface (
     assign registers[2] = Rx_data;
 
     always_ff @(posedge pclk) begin
-        if (preset) begin registers[0]=32'h0; registers[1]=32'h0; end
-        
-        case (paddr)
-            32'h0: if (reg_wen) registers[0] <= pwdata;
-            32'h4: if (penable && pwrite) registers[1] <= pwdata;
-                    else if (~pwrite) prdata <= registers[1];
-            32'h8: if (penable && reg_ren) prdata <= registers[2];
-        endcase
+        if (preset) begin registers[0]=32'h0; registers[1]=32'h0; 
+        end else if (penable) 
+            case (paddr)
+                32'h0: if (pwrite && reg_wen) registers[0] <= pwdata;
+                32'h4: if (pwrite) registers[1] <= pwdata;
+                        else if (~pwrite) prdata <= registers[1];
+                32'h8: if (~pwrite && reg_ren) prdata <= registers[2];
+            endcase
     end
 endmodule

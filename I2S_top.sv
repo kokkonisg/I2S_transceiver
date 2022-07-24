@@ -10,108 +10,97 @@ module I2S_top(
     input [31:0] paddr, pwdata,
     output [31:0] prdata,
     
-    output sclk, mclk, ws, sd); 
+    inout sclk, mclk, ws, sd); 
 
 
 function logic [31:0] preprocess;
     input logic [31:0] din;
-    input logic [1:0] standard, word_size;
-    input logic frame_size;
+    input OP_t OP;
     logic [31:0] dout;
 
-    if (frame_size==1'b0)  //16-bit frame and word
-        if (standard inside {2'b00, 2'b01, 2'b10})
-            dout = {{16{1'b0}}, din[15:0]};   
-        else dout = 32'bx;
+    if (OP.frame_size==f16bits)  //16-bit frame and word
+        dout = {{16{1'b0}}, din[15:0]};   
 
-    else if (frame_size==1'b1)//32-bit frame
-        if (word_size==2'b00) //16-bit word
-            case (standard)
-                2'b00, 2'b10: dout = {din[15:0], {16{1'b0}}};
-                2'b01: dout = {{16{1'b0}}, din[15:0]};
-                default: dout = 32'bx; //NOT ALLOWED
+    else if (OP.frame_size==f32bits)//32-bit frame
+        if (OP.word_size==w16bits) //16-bit word
+            case (OP.standard)
+                I2S, MSB: dout = {din[15:0], {16{1'b0}}};
+                LSB: dout = {{16{1'b0}}, din[15:0]};
             endcase
 
-        else if (word_size==2'b01) //24-bit word
-            case (standard)
-                2'b00, 2'b10: dout = {din[23:0], {8{1'b0}}};
-                2'b01: dout = {{8{1'b0}}, din[23:0]};
-                default: dout = 32'bx; //NOT ALLOWED
+        else if (OP.word_size==w24bits) //24-bit word
+            case (OP.standard)
+                I2S, MSB: dout = {din[23:0], {8{1'b0}}};
+                LSB: dout = {{8{1'b0}}, din[23:0]};
             endcase
             
-        else if (word_size==2'b10) //32-bit word
-            case (standard)
-                2'b00, 2'b01, 2'b10: dout = din;
-                default: dout = 32'bx; //NOT ALLOWED
-            endcase
-
-        else
-            dout = 32'bx;//NOT ALLOWED
+        else dout = din;
 
     preprocess = dout;
 endfunction
 
 function logic [31:0] postprocess;
     input logic [31:0] din;
-    input logic [1:0] standard, word_size;
-    input logic frame_size;
+    input OP_t OP;
     logic [31:0] dout;
 
-    if (frame_size==1'b1 && word_size==2'b00 && standard inside {2'b00, 2'b10})
-        dout = {16'b0,din[31:16]};
+    if (OP.frame_size==f32bits && OP.standard inside {I2S, MSB})
+        case (OP.word_size)
+            w32bits: dout = {16'b0, din[31:16]};
+            w24bits: dout = {8'b0, din[31:8]};
+            default: dout = din;
     else dout = din;
 
     postprocess = dout;
 endfunction
 
-sample_rate_enum sample_rate;
-word_size_enum word_size;
-frame_size_enum frame_size;
-standard_enum standard;
-mode_enum mode;
-logic stereo, mclk_en, mute, stop;
+OP_t OP;
 
 logic rst, Tx_wen, Tx_ren, Rx_ren, Rx_wen, reg_wen, reg_ren;
 logic Tx_full, Tx_empty, Rx_full, Rx_empty;
 logic [31:0] Tx_data, Rx_data, controls;
 logic occRx, occTx;
+logic ws_change;
 
-assign rst = controls[0];
-assign stop = controls[1];
-assign mute = controls[2];
-assign mode = ctrl_pkg::mode_enum'(controls[4:3]);
-assign standard = ctrl_pkg::standard_enum'(controls[6:5]);
-assign mclk_en = controls[7];
-assign frame_size = ctrl_pkg::frame_size_enum'(controls[8]);
-assign word_size = ctrl_pkg::word_size_enum'(controls[10:9]);
-assign sample_rate = ctrl_pkg::sample_rate_enum'(controls[11]);
-assign stereo = controls[12];
+assign OP.rst = controls[0];
+assign OP.stop = controls[1];
+assign OP.mute = controls[2];
+assign OP.mode = ctrl_pkg::mode_t'(controls[4:3]);
+assign OP.standard = ctrl_pkg::standard_t'(controls[6:5]);
+assign OP.mclk_en = controls[7];
+assign OP.frame_size = ctrl_pkg::frame_size_t'(controls[8]);
+assign OP.word_size = ctrl_pkg::word_size_t'(controls[10:9]);
+assign OP.sample_rate = ctrl_pkg::sample_rate_t'(controls[11]);
+assign OP.stereo = controls[12];
 
-logic sd_in, mclk_in, sclk_in;
+logic sd_in, mclk_in, sclk_in, ws_in;
 //SR=2'b00, MR=2'b10, ST=2'b01, MT=2'b11
-assign sd = mode[0] ? sd_in : 1'bZ;
+assign sd = (OP.mode==MR||SR) ? sd_in : 1'bZ;
 
-assign sclk = mode[1] ? sclk_in : 1'bZ;
+assign ws = (OP.mode==MT||MR) ? ws_in : 1'bZ;
 
-assign mclk = mclk_en ? mclk_in : 1'bZ;
+assign sclk = (OP.mode==MT||MR) ? sclk_in : 1'bZ;
+
+assign mclk = OP.mclk_en ? mclk_in : 1'bZ; //Only outputting mclk so no need for tristate
 // ----------**SCLK BIDIRECTIONAL TODO RETHINK?**---------------
 
 Reg_Interface Ureg(.*, .Rx_data(postprocess(Rx_data, standard, word_size, frame_size)));
 
-clk_div Udiv(.sclk(sclk_in), .pclk);
+clk_div Udiv(.sclk(sclk), .pclk, .rst_(preset), .N(6));
+
+ws_gen Uwsg (.clk(sclk), .rst_(preset), .OP, .ws, .en(OP.mode==MR || MT));
+
+ws_tracker Uwst (.clk(sclk), .rst_(preset), .ws, .ws_change);
 
 TxFIFO Utx(
     .wclk(pclk),
     .rclk(sclk),
-    .wen(Tx_wen),
-    .rst(rst),
-    .stereo,
-    .frame_size,
-    .standard,
-    .mode,
+    .wr_en(Tx_wen),
+    .rd_en(Tx_ren),
+    .rst_(preset),
+    .OP,
     .din(preprocess(Tx_data, standard, word_size, frame_size)),
     .dout(sd_in),
-    .ws,
     .full(Tx_full),
     .empty(Tx_empty)
 );
@@ -119,14 +108,12 @@ TxFIFO Utx(
 RxFIFO Urx(
     .rclk(pclk),
     .wclk(sclk),
-    .ren(Rx_ren),
-    .rst(rst),
+    .rd_en(Rx_ren),
+    .wr_en(Rx_wen),
+    .rst_(preset),
     .din(sd),
     .ws,
-    .stereo,
-    .frame_size,
-    .standard,
-    .mode,
+    .OP,
     .dout(Rx_data),
     .full(Rx_full),
     .empty(Rx_empty)
@@ -135,37 +122,32 @@ RxFIFO Urx(
 
 always_ff @(negedge pclk) begin
 	if (preset) begin
-        Tx_wen<=1'b0;
-        Rx_ren<=1'b0;
-        reg_wen<=1'b0;
-        reg_ren<=1'b0;
-        occRx<=1'b0;
-        occTx<=1'b0;
-    end
-    
-    if (!Tx_full && occTx) begin
-        Tx_wen <= 1'b1;
-        occTx <= 1'b0;
-    end
-    else Tx_wen <= 1'b0;
+        {Tx_wen, Tx_ren, Rx_wen, Rx_ren, reg_wen, reg_ren, occTx, occRx} <= 0;
+    end else begin
+        if (!Tx_full && occTx) begin: wr_TxFIFO
+            Tx_wen <= 1'b1;
+            occTx <= 1'b0;
+        end
+        else Tx_wen <= 1'b0;
 
-    if (penable && pwrite && paddr==32'h0 && !occTx) begin
-        reg_wen <= 1'b1;
-        occTx <= 1'b1;
-    end
-    else reg_wen <= 1'b0;
+        if (penable && pwrite && paddr==32'h0 && !occTx) begin: wr_TxReg
+            reg_wen <= 1'b1;
+            occTx <= 1'b1;
+        end
+        else reg_wen <= 1'b0;
 
-    if (!Rx_empty && !occRx) begin
-        Rx_ren <= 1'b1;
-        occRx <= 1'b1;
-    end
-    else Rx_ren <= 1'b0;
+        if (!Rx_empty && !occRx) begin: rd_RxFIFO
+            Rx_ren <= 1'b1;
+            occRx <= 1'b1;
+        end
+        else Rx_ren <= 1'b0;
 
-    if (penable && !pwrite && paddr==32'h8 && occRx) begin
-        reg_ren <= 1'b1;
-        occRx <= 1'b0;
+        if (penable && !pwrite && paddr==32'h8 && occRx) begin: rd_RxReg
+            reg_ren <= 1'b1;
+            occRx <= 1'b0;
+        end
+        else reg_ren <= 1'b0;
     end
-    else reg_ren <= 1'b0;
 end
 
 endmodule

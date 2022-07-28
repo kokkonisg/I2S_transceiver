@@ -84,7 +84,7 @@ assign sclk = (OP.mode==MT||MR) ? sclk_in : 1'bZ;
 assign mclk = OP.mclk_en ? mclk_in : 1'bZ; //Only outputting mclk so no need for tristate
 // ----------**SCLK BIDIRECTIONAL TODO RETHINK?**---------------
 
-Reg_Interface Ureg(.*, .Rx_data(postprocess(Rx_data, standard, word_size, frame_size)));
+Reg_Interface Ureg(.*, .Rx_data(postprocess(Rx_data, OP)));
 
 clk_div Udiv(.sclk(sclk), .pclk, .rst_(preset), .N(6));
 
@@ -96,11 +96,11 @@ TxFIFO Utx(
     .wclk(pclk),
     .rclk(sclk),
     .wr_en(Tx_wen),
-    .rd_en(Tx_ren),
+    .rd_en(Tx_ren & !OP.stop),
     .rst_(preset),
     .OP,
-    .din(preprocess(Tx_data, standard, word_size, frame_size)),
-    .dout(sd_in),
+    .din(preprocess(Tx_data, OP)),
+    .dout((OP.mute || OP.stop) ? 1'b0 : sd),
     .full(Tx_full),
     .empty(Tx_empty)
 );
@@ -109,12 +109,11 @@ RxFIFO Urx(
     .rclk(pclk),
     .wclk(sclk),
     .rd_en(Rx_ren),
-    .wr_en(Rx_wen),
+    .wr_en(Rx_wen & !OP.stop),
     .rst_(preset),
-    .din(sd),
-    .ws,
     .OP,
     .dout(Rx_data),
+    .din(sd),
     .full(Rx_full),
     .empty(Rx_empty)
 );

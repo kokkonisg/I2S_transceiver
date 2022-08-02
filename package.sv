@@ -11,6 +11,7 @@ package ctrl_pkg;
 	frame_size_t frame_size;
 	mode_t mode;
 	standard_t standard;
-	logic rst, stop, mute, mclk_en, stereo;
+	logic rst, stop, mute, mclk_en, stereo, tran_en;
         }OP_t; OP_t OP;
+    typedef enum {IDLE, L, R, ERR} ws_state_t;
 endpackage

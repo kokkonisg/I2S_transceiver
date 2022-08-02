@@ -118,12 +118,12 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     input logic wclk, rclk, rst_, wr_en, rd_en,
     logic [WIDTH-1:0] din,
     OP_t OP,
-    output logic dout);
+    output logic dout, full, empty);
 
     logic [WIDTH-1:0] FIFO [(1<<ADDR)-1:0];
     logic [ADDR-1:0] wadr, radr;
     int sptr;
-    logic sdone, empty, full;
+    logic sdone;
     let maxp = (OP.frame_size==f16bits) ? 15 : 31;
     assign sdone = (sptr == 0);
 
@@ -135,10 +135,11 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
         end
     end
 
+    assign dout = (OP.mute || OP.stop) ? 1'b0 : FIFO[radr][sptr];
+
     always_ff @(negedge rclk) begin : proc_read
         if (~rst_) sptr <= maxp;
         else if (rd_en && !empty) begin
-            dout <= FIFO[radr][sptr];
             sptr <= (sptr>0) ? sptr-1 : maxp;
         end
     end
@@ -160,7 +161,7 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
 
     //------------------------------------------------
 
-    always @(posedge rclk, negedge rst_) begin
+    always @(negedge rclk, negedge rst_) begin
         if (!rst_) {rbin, rgray} <= 0;
         else {rbin, rgray} <= {rbinnext, rgraynext};
     end
@@ -196,12 +197,12 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
     input logic wclk, rclk, rst_, wr_en, rd_en,
     logic din,
     OP_t OP,
-    output logic [WIDTH-1:0] dout);
+    output logic [WIDTH-1:0] dout, logic full, empty);
 
     logic [WIDTH-1:0] FIFO [(1<<ADDR)-1:0];
     logic [ADDR-1:0] wadr, radr;
     int sptr;
-    logic sdone, empty, full;
+    logic sdone;
     let maxp = (OP.frame_size==f16bits) ? 15 : 31;
     assign sdone = (sptr == 0);
 
@@ -243,7 +244,7 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
         else {rbin, rgray} <= {rbinnext, rgraynext};
     end
     assign radr = rbin[ADDR-1:0];
-    assign rbinnext = rbin + (rd_en & sdone & !empty);
+    assign rbinnext = rbin + (rd_en & !empty);
     assign rgraynext = (rbinnext>>1) ^ rbinnext;
 
     assign empty_val = (rgraynext == w2rsynch2);
@@ -258,7 +259,7 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
         else {wbin, wgray} <= {wbinnext, wgraynext};
     end
     assign wadr = wbin[ADDR-1:0];
-    assign wbinnext = wbin + (wr_en & !full);
+    assign wbinnext = wbin + (wr_en & sdone & !full);
     assign wgraynext = (wbinnext>>1) ^ wbinnext;
 
     assign full_val = (wgraynext == {~r2wsynch2[ADDR:ADDR-1], r2wsynch2[ADDR-2:0]});

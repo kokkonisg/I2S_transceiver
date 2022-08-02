@@ -49,6 +49,7 @@ function logic [31:0] postprocess;
             w32bits: dout = {16'b0, din[31:16]};
             w24bits: dout = {8'b0, din[31:8]};
             default: dout = din;
+        endcase
     else dout = din;
 
     postprocess = dout;
@@ -62,35 +63,27 @@ logic [31:0] Tx_data, Rx_data, controls;
 logic occRx, occTx;
 logic ws_change;
 
-assign OP.rst = controls[0];
-assign OP.stop = controls[1];
-assign OP.mute = controls[2];
-assign OP.mode = ctrl_pkg::mode_t'(controls[4:3]);
-assign OP.standard = ctrl_pkg::standard_t'(controls[6:5]);
-assign OP.mclk_en = controls[7];
-assign OP.frame_size = ctrl_pkg::frame_size_t'(controls[8]);
-assign OP.word_size = ctrl_pkg::word_size_t'(controls[10:9]);
-assign OP.sample_rate = ctrl_pkg::sample_rate_t'(controls[11]);
-assign OP.stereo = controls[12];
+assign OP = controls;
 
-logic sd_in, mclk_in, sclk_in, ws_in;
+logic sd_gen, mclk_gen, sclk_gen, ws_gen;
 //SR=2'b00, MR=2'b10, ST=2'b01, MT=2'b11
-assign sd = (OP.mode==MR||SR) ? sd_in : 1'bZ;
+assign sd = (OP.mode inside {MT,ST}) ? sd_gen : 1'bZ;
 
-assign ws = (OP.mode==MT||MR) ? ws_in : 1'bZ;
+assign ws = (OP.mode inside {MT,MR}) ? ws_gen : 1'bZ;
 
-assign sclk = (OP.mode==MT||MR) ? sclk_in : 1'bZ;
+assign sclk = (OP.mode inside {MT,MR}) ? sclk_gen : 1'bZ;
 
-assign mclk = OP.mclk_en ? mclk_in : 1'bZ; //Only outputting mclk so no need for tristate
+assign mclk = OP.mclk_en ? mclk_gen : 1'bZ; //Only outputting mclk so no need for tristate
 // ----------**SCLK BIDIRECTIONAL TODO RETHINK?**---------------
 
 Reg_Interface Ureg(.*, .Rx_data(postprocess(Rx_data, OP)));
 
-clk_div Udiv(.sclk(sclk), .pclk, .rst_(preset), .N(6));
+clk_div Udiv(.sclk(sclk_gen), .pclk, .rst_(preset), .N(6'd3));
 
-ws_gen Uwsg (.clk(sclk), .rst_(preset), .OP, .ws, .en(OP.mode==MR || MT));
+ws_gen Uwsg (.clk(sclk), .rst_(preset), .OP, .ws(ws_gen));
 
-ws_tracker Uwst (.clk(sclk), .rst_(preset), .ws, .ws_change);
+ws_state_t ws_state;
+ws_tracker Uwtr (.clk(sclk), .rst_(preset), .OP, .ws, .state(ws_state));
 
 TxFIFO Utx(
     .wclk(pclk),
@@ -100,7 +93,7 @@ TxFIFO Utx(
     .rst_(preset),
     .OP,
     .din(preprocess(Tx_data, OP)),
-    .dout((OP.mute || OP.stop) ? 1'b0 : sd),
+    .dout(sd_gen),
     .full(Tx_full),
     .empty(Tx_empty)
 );
@@ -119,9 +112,9 @@ RxFIFO Urx(
 );
 
 
-always_ff @(negedge pclk) begin
-	if (preset) begin
-        {Tx_wen, Tx_ren, Rx_wen, Rx_ren, reg_wen, reg_ren, occTx, occRx} <= 0;
+always_ff @(negedge pclk) begin: proc_reg_fifo_dataex
+	if (!preset) begin
+        {Tx_wen, Rx_ren, reg_wen, reg_ren, occTx, occRx} <= 0;
     end else begin
         if (!Tx_full && occTx) begin: wr_TxFIFO
             Tx_wen <= 1'b1;
@@ -147,6 +140,19 @@ always_ff @(negedge pclk) begin
         end
         else reg_ren <= 1'b0;
     end
+end
+
+always_comb begin : proc_ws_fifo_synch
+    if (ws_state inside {L,R}) begin
+        {Tx_ren, Rx_wen} = 2'b0;
+        case (OP.mode)
+            MT, ST: Tx_ren = 1'b1;
+            MR, SR: Rx_wen = 1'b1;
+        endcase
+    end
+    else if (ws_state == IDLE)
+        {Tx_ren, Rx_wen} = 2'b0;
+    
 end
 
 endmodule

@@ -1,156 +1,179 @@
 `include "package.sv"
 import ctrl_pkg::*;
 
-/*module test_clk_div(pclk, sclk);
-	input	wire	pclk;
-	output	reg		sclk;
+module clk_tbench;
+	logic pclk, rst_, sclk, mclk;
+	OP_t OP = '{default: 0, mclk_en: 1'b1, mode: MT, stereo:1'b1};
+	int cnt=0;
+	always forever @(posedge pclk) if(rst_) cnt++;
 
-  reg	[31:0]	counter=0;
-  	
+	clk_div Udiv (.*);
 
-	always @(posedge pclk)
-	if (counter == 0)
-		counter <= 2;
-	else
-		counter <= counter - 1;
+	always forever #2 pclk <= !pclk;
 
-	always @(posedge pclk)
-   		sclk <= (counter == 1);
-        
-endmodule*/
+	initial begin
+		pclk <= 1'b0;rst_<=1'b0;
+		@(posedge pclk) rst_<=1'b1;
+	end
+endmodule
 
 module clk_div(
 	input logic pclk, rst_,
-	logic [5:0] N,
-	output logic sclk
+	OP_t OP,
+	output logic sclk, mclk
 );
-	logic [5:0] counter;
-	logic ev_clk; 
-	logic div1,div2;
+	logic [5:0] counter, N;
+	logic ev_clk, clk25, f2, f4, f8, f16; 
+	logic div1,div2,en,en25;
 
-	assign sclk = (!N[0]) ? ev_clk : div1^div2;
+	div_calc Udc(.OP(OP),.en25(en25),.enN(en),.N);
+
+	always_comb
+		if (OP.mclk_en) begin
+			mclk = (!en25) ? (!N[0] ? ev_clk : div1^div2) : clk25;
+			if (!OP.stereo && OP.frame_size==f16bits) sclk = f16;
+			else if (!OP.stereo && OP.frame_size==f32bits) sclk = f8;
+			else if (OP.stereo && OP.frame_size==f16bits) sclk = f8;
+			else if (OP.stereo && OP.frame_size==f32bits) sclk = f4;
+		end else
+			sclk = (!en25) ? (!N[0] ? ev_clk : div1^div2) : clk25;
+
+	always_ff @(posedge mclk, negedge rst_)
+		if (!rst_) f2 <= 1'b0;
+		else f2 <= !f2;
+
+	always_ff @(posedge f2, negedge rst_)
+		if (!rst_) f4 <= 1'b0;
+		else f4 <= !f4;
+
+	always_ff @(posedge f4, negedge rst_)
+		if (!rst_) f8 <= 1'b0;
+		else f8 <= !f8;
+
+	always_ff @(posedge f8, negedge rst_)
+		if (!rst_) f16 <= 1'b0;
+		else f16 <= !f16;
 
 	always_ff @(posedge pclk, negedge rst_) begin
 		if (!rst_) begin
 			{counter, ev_clk} <= 0;
 			{div1, div2} <= 2'b11;
-		end else begin
+		end else if (en) begin
 			counter <= (counter>=N-1) ? 6'b0 : counter + 1;
 		end
 	end
 
 	always_ff @(posedge pclk)
-		case (N[0])
-			1'b0: 
-				if (counter==(N/2-1)) begin
-					counter <= 0;
-					ev_clk <= ~ev_clk;
-				end
-			1'b1: begin
-				if (counter==0) div1 <= ~div1;
-			end
-		endcase
+		if (en)
+			case (N[0])
+				1'b0: if (counter==(N/2-1))
+						{counter, ev_clk} <= {6'h0, ~ev_clk};
+				1'b1: if (counter==0) div1 <= ~div1;
+			endcase
 
 	always_ff @(negedge pclk)
-		if (N[0]==1'b1 && counter==(N+1)/2) div2 <= ~div2;	
+		if (en)
+			if (N[0]==1'b1 && counter==(N+1)/2) div2 <= ~div2;	
+
+
+	logic A, B, C, O;
+	always_ff @(posedge pclk, negedge rst_)
+		if (!rst_) {A,B,C} <= 1'b0;
+		else if (en25) begin
+			A <= !A & !B & !C;
+			B <= (A | B) & !C;
+			C <= B;
+		end
+
+	assign O = (!pclk & B & C) | (pclk & O);
+	assign clk25 = A | O;
 
 endmodule	
 
-module ws_gen(
-	input logic clk, rst_,
-	OP_t OP,
-	output logic ws
-	);
+module div_calc (
+	input OP_t OP,
+	output logic enN, en25, [5:0] N
+);
 
-	logic [4:0] cnt;
-	
-	typedef enum {IDLE, L, R} state_t; state_t state, nextstate;
-	always_ff @(negedge clk, negedge rst_) begin
-		if (!rst_) {state, cnt} <= {IDLE ,5'hff};
-		else {state, cnt} <= {nextstate, (OP.tran_en) ? cnt+1'b1 : cnt};
+	always_comb begin
+		{enN, en25} = 1'b0;
+		if (OP.mode inside {MT, MR})
+			case (OP.mclk_en)
+			  1'b1: if (OP.sys_freq==k32) case (OP.sample_rate)
+						hz44: {N, enN} = {6'd3, 1'b1};
+						hz48: en25 = 1'b1;
+					endcase
+			  1'b0: case (OP.sys_freq)
+					k8: case (OP.stereo)
+						1'b1: case (OP.sample_rate)
+							hz44: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd6,1'b1};
+								f32bits: {N, enN} = {6'd3,1'b1};
+							endcase
+							hz48: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd5,1'b1};
+								f32bits: en25 = 1'b1;
+							endcase
+						endcase
+						1'b0: case (OP.sample_rate)
+							hz44: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd11,1'b1};
+								f32bits: {N, enN} = {6'd6,1'b1};
+							endcase
+							hz48: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd10,1'b1};
+								f32bits: {N, enN} = {6'd5,1'b1};
+							endcase
+						endcase
+					endcase
+					k16: case (OP.stereo)
+						1'b1: case (OP.sample_rate)
+							hz44: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd11,1'b1};
+								f32bits: {N, enN} = {6'd6,1'b1};
+							endcase
+							hz48: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd10,1'b1};
+								f32bits: {N, enN} = {6'd5,1'b1};
+							endcase
+						endcase
+						1'b0: case (OP.sample_rate)
+							hz44: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd23,1'b1};
+								f32bits: {N, enN} = {6'd11,1'b1};
+							endcase
+							hz48: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd21,1'b1};
+								f32bits: {N, enN} = {6'd10,1'b1};
+							endcase
+						endcase
+					endcase
+					k32: case (OP.stereo)
+						1'b1: case (OP.sample_rate)
+							hz44: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd23,1'b1};
+								f32bits: {N, enN} = {6'd11,1'b1};
+							endcase
+							hz48: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd21,1'b1};
+								f32bits: {N, enN} = {6'd10,1'b1};
+							endcase
+						endcase
+						1'b0: case (OP.sample_rate)
+							hz44: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd45,1'b1};
+								f32bits: {N, enN} = {6'd23,1'b1};
+							endcase
+							hz48: case (OP.frame_size)
+								f16bits: {N, enN} = {6'd42,1'b1};
+								f32bits: {N, enN} = {6'd21,1'b1};
+							endcase
+						endcase
+					endcase
+				endcase 
+			endcase 
 	end
 
-	always_comb 
-		case (state)
-			IDLE: if (OP.tran_en) nextstate <= L;
-				  else nextstate <= IDLE;
-
-			L: if ((OP.frame_size==f32bits && cnt==5'h1f) || 
-				   (OP.frame_size==f16bits && cnt[3:0]==4'hf))
-					nextstate <= R;
-
-			R: if ((OP.frame_size==f32bits && cnt==5'h1f) || 
-				   (OP.frame_size==f16bits && cnt[3:0]==4'hf))
-					nextstate <= (OP.tran_en) ? L : IDLE;	
-		endcase 		
-	
-
-	always_comb 
-		case (state)
-			IDLE: ws <= (OP.standard==I2S) ? 1'b1 : 1'b0;
-			L: ws <= (OP.standard==I2S) ? 1'b0 : 1'b1;
-			R: ws <= (OP.standard==I2S) ? 1'b1 : 1'b0;
-		endcase
-
-endmodule
-
-module ws_tracker(
-	input logic clk, rst_, ws, OP_t OP,
-	output ws_state_t state);
-
-logic ws_old, ws_change;
-assign ws_change = ws ^ ws_old;
-
-logic [4:0] cnt; logic cnt_en;
-
-always_ff @(negedge clk, negedge rst_) begin
-	if (!rst_) cnt <= 5'h0;
-	else begin
-	ws_old <= ws;
-	if (cnt_en) cnt <= cnt+1'b1;
-	end
-end
-
-let cntZ = ((OP.frame_size==f32bits && cnt==5'h0) || (OP.frame_size==f16bits && cnt[3:0]==4'h0));
-let RtoL = (OP.standard==I2S) ? (ws_old && !ws) : (!ws_old && ws);
-let LtoR = (OP.standard==I2S) ? (!ws_old && ws) : (ws_old && !ws);
-let RtoIDL = (OP.standard==I2S) ? (ws_old && ws && cntZ) : (!ws_old && !ws && cntZ);
-let LtoIDL = (OP.standard==I2S) ? (!ws_old && !ws && cntZ) : (ws_old && ws && cntZ);
+endmodule : div_calc
 
 
-always_comb begin
-	if (!rst_) state = IDLE;
-	else
-	    if (RtoL) {state, cnt_en} = {L, 1'b1};
-		else if (LtoIDL) {state, cnt_en} = {IDLE, 1'b0};
-		else if (LtoR) {state, cnt_en} = {R, 1'b1};
-		else if (RtoIDL) {state, cnt_en} = {IDLE,1'b0};
-	    
-end
-
-endmodule
-
-module tbench;
-logic clk=0;
-logic rst_=1;
-OP_t OP = '{default: 0, frame_size: f32bits, standard: MSB};
-logic ws;
-ws_state_t state;
-
-ws_gen u1(.*);
-
-ws_tracker u2(clk, rst_, ws, OP, state);
-
-always forever #1 clk <= ~clk;
-
-initial begin
-@(posedge clk) rst_<=0;
-@(posedge clk) rst_<=1;
-repeat(2) @(posedge clk);
-OP.tran_en<=1;
-repeat(50) @(posedge clk);
-@(u1.cnt==5'hff) OP.tran_en<=0;
-repeat(25) @(posedge clk);
-OP.tran_en<=1;
-end
-endmodule

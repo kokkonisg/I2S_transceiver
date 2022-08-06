@@ -14,6 +14,7 @@ module I2S_top(
 
 
 OP_t OP;
+ws_state_t ws_gen_state;
 logic Tx_wen, Tx_ren, Rx_ren, Rx_wen, reg_wen, reg_ren;
 logic Tx_full, Tx_empty, Rx_full, Rx_empty;
 logic [31:0] Tx_data, Rx_data, controls;
@@ -36,9 +37,9 @@ assign mclk = OP.mclk_en ? mclk_gen : 1'bZ;
 reg_interface Ureg(.*, .Rx_data(postprocess(Rx_data, OP)));
 reg_control Uregc(.*);
 
-clk_div Udiv(.sclk(sclk_gen), .pclk, .rst_(preset), .N(6'd3));
+clk_div Udiv(.sclk(sclk_gen), .pclk, .mclk, .rst_(preset), .OP);
 
-ws_gen Uwsg (.clk(sclk), .rst_(preset), .OP, .ws(ws_gen), .*);
+ws_gen Uwsg (.clk(sclk), .rst_(preset), .OP, .ws(ws_gen), .state(ws_gen_state), .*);
 ws_control Uwsc (.*);
 
 TxFIFO Utx(

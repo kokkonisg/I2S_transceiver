@@ -4,12 +4,12 @@ import ctrl_pkg::*;
 module ws_gen(
 	input logic clk, rst_, Tx_empty, Rx_full,
 	OP_t OP,
-	output logic ws
+	output logic ws, ws_state_t state
 	);
 
 	logic [4:0] cnt;
 	logic enable;
-	ws_state_t state, nextstate;
+	ws_state_t nextstate;
 	always_ff @(negedge clk, negedge rst_) begin
 		if (!rst_) {state, cnt} <= {IDLE ,5'hff};
 		else {state, cnt} <= {nextstate, (enable) ? cnt+1'b1 : cnt};
@@ -54,13 +54,13 @@ always_ff @(negedge clk, negedge rst_) begin
 	if (!rst_) cnt <= 5'h0;
 	else begin
 	ws_old <= ws;
-	if (cnt_en) cnt <= cnt+1'b1;
+	if (OP.mode inside {ST, SR} && cnt_en) cnt <= cnt+1'b1;
 	end
 end
 
 let cntZ = ((OP.frame_size==f32bits && cnt==5'h0) || (OP.frame_size==f16bits && cnt[3:0]==4'h0));
 let RtoL = (OP.standard==I2S) ? (ws_old && !ws) : (!ws_old && ws); //same as IDLEtoL
-let LtoR = OP.stereo & (OP.standard==I2S) ? (!ws_old && ws) : (ws_old && !ws);
+let LtoR = OP.stereo & ((OP.standard==I2S) ? (!ws_old && ws) : (ws_old && !ws));
 let RtoIDL = OP.stereo & ((OP.standard==I2S) ? (ws_old && ws && cntZ) : (!ws_old && !ws && cntZ));
 let LtoIDL = OP.stereo ? 
 			  ((OP.standard==I2S) ? (!ws_old && !ws && cntZ) : (ws_old && ws && cntZ)) :
@@ -80,11 +80,15 @@ end
 endmodule
 
 module ws_control(
-	input logic sclk, preset, ws, OP_t OP,
-	output logic Tx_ren, Rx_wen, del_Tx_ren, del_Rx_wen);
+	input logic sclk, preset, ws, 
+	OP_t OP, ws_state_t ws_gen_state,
+	output logic Tx_ren, Rx_wen, del_Tx_ren, del_Rx_wen
+	);
 
-	ws_state_t ws_state;
-	ws_tracker Uwst(.clk(sclk), .rst_(preset), .OP, .ws, .state(ws_state));
+	ws_state_t ws_state, ws_tr_state;
+	ws_tracker Uwst(.clk(sclk), .rst_(preset), .OP, .ws, .state(ws_tr_state));
+	assign ws_state = (OP.mode inside {MT, MR}) ? ws_gen_state : ws_tr_state;
+
 
 	always_ff @(negedge sclk or negedge preset) begin : proc_del_en
     if(!preset)

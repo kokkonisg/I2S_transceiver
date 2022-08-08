@@ -5,7 +5,7 @@
 
 import ctrl_pkg::*;
 
-module I2S_top(
+module I2S_top #(parameter OFFSET = 0)(
     input logic pclk, penable, preset, pwrite,
     input logic [31:0] paddr, pwdata,
     output logic [31:0] prdata,
@@ -18,6 +18,7 @@ ws_state_t ws_gen_state;
 logic Tx_wen, Tx_ren, Rx_ren, Rx_wen, reg_wen, reg_ren;
 logic Tx_full, Tx_empty, Rx_full, Rx_empty;
 logic [31:0] Tx_data, Rx_data, controls;
+logic [31:0] addr; assign addr = paddr - OFFSET;
 logic del_Tx_ren, del_Rx_wen; //delayed enables
 logic [3:0] flags;
 

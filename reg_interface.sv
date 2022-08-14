@@ -8,7 +8,7 @@ module reg_interface (
 
     logic [31:0] registers [3];
 
-    assign controls = registers[0][12:0];
+    assign controls = registers[0];
     assign Tx_data = registers[1];
     assign registers[2] = Rx_data;
 

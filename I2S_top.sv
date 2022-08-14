@@ -47,7 +47,7 @@ TxFIFO Utx(
     .wclk(pclk),
     .rclk(sclk),
     .wr_en(Tx_wen),
-    .rd_en((OP.standard==I2S ? del_Tx_ren : Tx_ren) & !OP.stop),
+    .rd_en(OP.standard==I2S ? del_Tx_ren : Tx_ren),
     .rst_(preset),
     .OP,
     .din(preprocess(Tx_data, OP)),
@@ -60,7 +60,7 @@ RxFIFO Urx(
     .rclk(pclk),
     .wclk(sclk),
     .rd_en(Rx_ren),
-    .wr_en((OP.standard==I2S ? del_Rx_wen : Rx_wen)  & !OP.stop),
+    .wr_en(OP.standard==I2S ? del_Rx_wen : Rx_wen),
     .rst_(preset),
     .OP,
     .dout(Rx_data),
@@ -75,23 +75,20 @@ function logic [31:0] preprocess;
     input OP_t OP;
     logic [31:0] dout;
 
-    if (OP.frame_size==f16bits)  //16-bit frame and word
-        dout = {{16{1'b0}}, din[15:0]};   
-
-    else if (OP.frame_size==f32bits)//32-bit frame
-        if (OP.word_size==w16bits) //16-bit word
-            case (OP.standard)
-                I2S, MSB: dout = {din[15:0], {16{1'b0}}};
-                LSB: dout = {{16{1'b0}}, din[15:0]};
+    case (OP.frame_size)
+        f16bits: dout = {{16'b0}, din[15:0]};
+        f32bits: case (OP.word_size)
+            w16bits: case (OP.standard)
+                I2S, MSB: dout = {din[15:0], {16'b0}};
+                LSB: dout = {{16'b0}, din[15:0]};
             endcase
-
-        else if (OP.word_size==w24bits) //24-bit word
-            case (OP.standard)
-                I2S, MSB: dout = {din[23:0], {8{1'b0}}};
-                LSB: dout = {{8{1'b0}}, din[23:0]};
+            w24bits: case (OP.standard)
+                I2S, MSB: dout = {din[23:0], {8'b0}};
+                LSB: dout = {{8'b0}, din[23:0]};
             endcase
-            
-        else dout = din;
+            w32bits: dout = din;
+        endcase
+    endcase
 
     preprocess = dout;
 endfunction
@@ -101,13 +98,20 @@ function logic [31:0] postprocess;
     input OP_t OP;
     logic [31:0] dout;
 
-    if (OP.frame_size==f32bits && OP.standard inside {I2S, MSB})
-        case (OP.word_size)
-            w32bits: dout = {16'b0, din[31:16]};
-            w24bits: dout = {8'b0, din[31:8]};
-            default: dout = din;
+    case (OP.frame_size)
+        f16bits: dout = {{16'b0}, din[15:0]};
+        f32bits: case (OP.word_size)
+            w16bits: case (OP.standard)
+                I2S, MSB: dout = {{16'b0}, din[31:16]};
+                LSB: dout = {{16'b0}, din[15:0]};
+            endcase
+            w24bits: case (OP.standard)
+                I2S, MSB: dout = {{8'b0}, din[31:8]};
+                LSB: dout = {{8'b0}, din[23:0]};
+            endcase
+            w32bits: dout = din;
         endcase
-    else dout = din;
+    endcase
 
     postprocess = dout;
 endfunction

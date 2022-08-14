@@ -12,10 +12,10 @@ module ws_gen(
 	ws_state_t nextstate;
 	always_ff @(negedge clk, negedge rst_) begin
 		if (!rst_) {state, cnt} <= {IDLE ,5'hff};
-		else {state, cnt} <= {nextstate, (enable) ? cnt+1'b1 : cnt};
+		else {state, cnt} <= {nextstate, (enable && !OP.stop) ? cnt+1'b1 : cnt};
 	end
 
-	always_latch if((OP.stereo && cnt==5'h1f) || (!OP.stereo && cnt[3:0]==4'hf))	 
+	always_latch if((OP.frame_size==f32bits && cnt==5'h1f) || (OP.frame_size==f16bits && cnt[3:0]==4'hf))	 
 		enable = OP.tran_en & ((OP.mode==MT & !Tx_empty) | (OP.mode==MR & !Rx_full));
 
 	always_comb 
@@ -54,7 +54,7 @@ always_ff @(negedge clk, negedge rst_) begin
 	if (!rst_) cnt <= 5'h0;
 	else begin
 	ws_old <= ws;
-	if (OP.mode inside {ST, SR} && cnt_en) cnt <= cnt+1'b1;
+	if (OP.mode inside {ST, SR} && cnt_en && !OP.stop) cnt <= cnt+1'b1;
 	end
 end
 

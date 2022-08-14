@@ -27,8 +27,8 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     assign dout = (OP.mute || OP.stop) ? 1'b0 : FIFO[radr][sptr];
 
     always_ff @(negedge rclk, negedge rst_) begin : proc_read
-        if (!rst_) sptr <= maxp;
-        else if (rd_en && !empty) begin
+        if (!rd_en) sptr <= maxp;
+        else if (rd_en && !empty && !OP.stop) begin
             sptr <= (sptr>0) ? sptr-1 : maxp;
         end
     end
@@ -95,10 +95,10 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
 
     //basic FIFO mem logic for serial input and parallel output
     always_ff @(posedge wclk, negedge rst_) begin : proc_write
-        if(~rst_) begin
+        if(~rst_) 
             FIFO <= '{default: 0};
-            sptr <= maxp;
-        end else if (wr_en && !full) begin
+        else if (!wr_en) sptr <= maxp;
+        else if (wr_en && !full && !OP.stop) begin
             FIFO[wadr][sptr] <= din;
             sptr <= (sptr>0) ? sptr-1 : maxp;
         end

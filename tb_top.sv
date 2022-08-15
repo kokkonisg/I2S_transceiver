@@ -10,7 +10,7 @@ logic [31:0] paddr, pwdata, prdata;
 wire sclk, mclk, ws, sd;
 OP_t OPtx ='{default: 0, standard: MSB, mode: MT, word_size: w16bits, frame_size: f32bits, stereo: 1'b1};
 OP_t OPrx ='{default: 0, standard: MSB, mode: SR, word_size: w16bits, frame_size: f32bits, stereo: 1'b1};
-OP_t OPpp = '{default: 0, standard: MSB, mode: MT, word_size: w16bits, frame_size: f32bits, stereo: 1'b1};
+OP_t OPmstr = '{default: 0, standard: MSB, mode: MT, word_size: w16bits, frame_size: f32bits, stereo: 1'b1};
 
 I2S_top #(.OFFSET(0)) Utr(.*, .prdata());
 I2S_top #(.OFFSET(32'h10)) Urc(.*);
@@ -21,8 +21,8 @@ always #(CLK_PERIOD/2) pclk=~pclk;
 
 
 // assign sd = $urandom(i);
-//clk_div Udiv(.sclk, .pclk, .rst_(preset), .mclk, .OP(OPpp));
-//ws_gen Usmth(.clk(sclk), .rst_(preset), .OP(OPpp), .ws, .Tx_empty(1'b0), .Rx_full(1'b0));
+//clk_div Udiv(.sclk, .pclk, .rst_(preset), .mclk, .OP(OPmstr));
+//ws_gen Usmth(.clk(sclk), .rst_(preset), .OP(OPmstr), .ws, .Tx_empty(1'b0), .Rx_full(1'b0));
 
 // logic [31:0] datain [12] = '{dafault: $urandom};
 // logic [31:0] dataout [12];

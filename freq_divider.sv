@@ -17,6 +17,7 @@ module clk_tbench;
 	end
 endmodule
 
+
 module clk_div(
 	input logic pclk, rst_,
 	OP_t OP,
@@ -28,6 +29,11 @@ module clk_div(
 
 	div_calc Udc(.OP(OP),.en25(en25),.enN(en),.N);
 
+
+	//Logic for division-by-N, where N is an odd or even number.
+	//there is also a divide-by-2.5 divider as it was necessary
+	//to achieve the desired clock frequency
+
 	always_comb
 		if (OP.mclk_en) begin
 			mclk = (!en25) ? (!N[0] ? ev_clk : div1^div2) : clk25;
@@ -37,6 +43,7 @@ module clk_div(
 			else if (OP.stereo && OP.frame_size==f32bits) sclk = f4;
 		end else
 			sclk = (!en25) ? (!N[0] ? ev_clk : div1^div2) : clk25;
+
 
 	always_ff @(posedge mclk, negedge rst_)
 		if (!rst_) f2 <= 1'b0;
@@ -90,6 +97,9 @@ module clk_div(
 
 endmodule	
 
+
+//look up table to calculate, depending on I2S options,
+//the divisor of the freq divider 
 module div_calc (
 	input OP_t OP,
 	output logic enN, en25, [5:0] N

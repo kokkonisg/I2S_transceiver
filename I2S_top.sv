@@ -5,12 +5,13 @@
 
 import ctrl_pkg::*;
 
-module I2S_top #(parameter OFFSET = 0)(
+module I2S_top #(parameter ADR_OFFSET = 0)(
     input logic pclk, penable, preset, pwrite,
     input logic [31:0] paddr, pwdata,
+    output logic mclk,
     output logic [31:0] prdata,
     
-    inout sclk, mclk, ws, sd); 
+    inout sclk, ws, sd); 
 
 
 OP_t OP;
@@ -18,30 +19,27 @@ ws_state_t ws_gen_state;
 logic Tx_wen, Tx_ren, Rx_ren, Rx_wen, reg_wen, reg_ren;
 logic Tx_full, Tx_empty, Rx_full, Rx_empty;
 logic [31:0] Tx_data, Rx_data, controls;
-logic [31:0] addr; assign addr = paddr - OFFSET;
+logic [31:0] addr; assign addr = paddr - ADR_OFFSET; 
 logic del_Tx_ren, del_Rx_wen; //delayed enables
-logic [3:0] flags;
+// logic [3:0] flags;
 
-assign flags = {Tx_full, Tx_empty, Rx_full, Rx_empty};
+// assign flags = {Tx_full, Tx_empty, Rx_full, Rx_empty};
 assign OP = controls;
 
-logic sd_gen, mclk_gen, sclk_gen, ws_gen;
+logic sd_gen, sclk_gen, ws_gen;
 assign sd = (OP.mode inside {MT,ST}) ? sd_gen : 1'bZ;
 
 assign ws = (OP.mode inside {MT,MR}) ? ws_gen : 1'bZ;
 
 assign sclk = (OP.mode inside {MT,MR}) ? sclk_gen : 1'bZ;
 
-//Only outputting mclk so no need for tristate
-assign mclk = OP.mclk_en ? mclk_gen : 1'bZ; 
-
 reg_interface Ureg(.*, .Rx_data(postprocess(Rx_data, OP)));
 reg_control Uregc(.*);
 
 clk_div Udiv(.sclk(sclk_gen), .pclk, .mclk, .rst_(preset), .OP);
 
-ws_gen Uwsg (.clk(sclk), .rst_(preset), .OP, .ws(ws_gen), .state(ws_gen_state), .*);
-ws_control Uwsc (.*);
+ws_gen Uwsg (.clk(sclk), .rst_(preset), .OP, .ws(ws_gen), .state(ws_gen_state), .Tx_empty, .Rx_full);
+ws_control Uwsc (.sclk, .preset, .ws, .OP, .ws_gen_state, .Tx_ren, .Rx_wen, .del_Tx_ren, .del_Rx_wen);
 
 TxFIFO Utx(
     .wclk(pclk),

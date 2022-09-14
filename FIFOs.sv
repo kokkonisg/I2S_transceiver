@@ -2,6 +2,9 @@
 
 import ctrl_pkg::*;
 
+//Heavily based on the design shown on Cliff Cummings' paper
+//"Simulation and Synthesis Techniques for Asynchronous FIFO Design", 2005
+
 module TxFIFO #(WIDTH = 32, ADDR = 3) (
     input logic wclk, rclk, rst_, wr_en, rd_en,
     logic [WIDTH-1:0] din,
@@ -15,7 +18,7 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     let maxp = (OP.frame_size==f16bits) ? 15 : 31;
     assign sdone = (sptr == 0);
 
-    //basic FIFO mem logic for parallel input and serial output
+    //basic FIFO mem logic for parallel input and serial output.
     always_ff @(posedge wclk, negedge rst_) begin : proc_write
         if(~rst_) begin
             FIFO <= '{default: 0};

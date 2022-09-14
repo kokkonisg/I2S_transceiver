@@ -15,6 +15,7 @@ module ws_gen(
 		else {state, cnt} <= {nextstate, (enable && !OP.stop) ? cnt+1'b1 : cnt};
 	end
 
+	//latch to send the whole frame if transaction is disabled midway 
 	always_latch if((OP.frame_size==f32bits && cnt==5'h1f) || (OP.frame_size==f16bits && cnt[3:0]==4'hf))	 
 		enable = OP.tran_en & ((OP.mode==MT & !Tx_empty) | (OP.mode==MR & !Rx_full));
 
@@ -87,6 +88,9 @@ module ws_control(
 
 	ws_state_t ws_state, ws_tr_state;
 	ws_tracker Uwst(.clk(sclk), .rst_(preset), .OP, .ws, .state(ws_tr_state));
+
+	//depending on the peripheral's mode, 
+	//only one of the above modules needs to run and that one's state is outputed to the top module
 	assign ws_state = (OP.mode inside {MT, MR}) ? ws_gen_state : ws_tr_state;
 
 

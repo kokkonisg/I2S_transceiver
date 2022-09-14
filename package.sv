@@ -7,13 +7,14 @@ package ctrl_pkg;
     typedef enum logic [1:0] {k32=2'b00, k16=2'b01, k8=2'b10} sys_freq_t;
 
     typedef struct packed {
-	sample_rate_t sample_rate;
-	word_size_t word_size;
-	frame_size_t frame_size;
-	mode_t mode;
-	standard_t standard;
-	sys_freq_t sys_freq;
-	logic stop, mute, mclk_en, stereo, tran_en;
+	sample_rate_t sample_rate; //sample rate of the PCM encoder
+	word_size_t word_size; //no. of bits used to encode each word
+	frame_size_t frame_size; //frame's size, if larger than word_size rest will be zero-filled
+	mode_t mode; //I2S mode, any combination of Master/Slave and Transmitter/Reciever
+	standard_t standard; //I2S standard to be used
+	sys_freq_t sys_freq; //the systems main clock frequency
+	logic stop, mute, mclk_en, stereo, tran_en; //misc. options
+        //tran_en to be used from master to start the data transaction
         }OP_t; OP_t OP;
     typedef enum {IDLE, L, R, ERR} ws_state_t;
 endpackage

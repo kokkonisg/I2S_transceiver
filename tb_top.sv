@@ -12,8 +12,8 @@ OP_t OPtx ='{default: 0, standard: MSB, mode: MT, word_size: w16bits, frame_size
 OP_t OPrx ='{default: 0, standard: MSB, mode: SR, word_size: w16bits, frame_size: f32bits, stereo: 1'b1};
 OP_t OPmstr = '{default: 0, standard: MSB, mode: MT, word_size: w16bits, frame_size: f32bits, stereo: 1'b1};
 
-I2S_top #(.OFFSET(0)) Utr(.*, .prdata());
-I2S_top #(.OFFSET(32'h10)) Urc(.*);
+I2S_top #(.ADR_OFFSET(0)) Utr(.*, .prdata());
+I2S_top #(.ADR_OFFSET(32'h10)) Urc(.*);
 
 assign sclk = temp_sclk;
 localparam CLK_PERIOD = 6;

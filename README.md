@@ -2,6 +2,6 @@
 
 fixxing bugs
 
--check stop and mute behavior
--better tbench
--assertions?
+- check stop and mute behavior
+- better tbench
+- assertions?

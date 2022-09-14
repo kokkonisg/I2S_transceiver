@@ -1,7 +1,7 @@
 module reg_interface (
     input logic reg_wen, reg_ren,
     input logic pclk, preset, penable, pwrite, 
-    input logic [3:0] flags,
+    // input logic [3:0] flags,
     input logic [31:0] addr, pwdata, Rx_data,
 
     output logic [31:0] prdata, Tx_data, controls);
@@ -16,10 +16,10 @@ module reg_interface (
         if (!preset) registers[0:1] <= '{default: 0};
         else if (penable) 
             case (addr)
-                32'h0: if (pwrite) registers[0] <= pwdata;
-                        else if (!pwrite) prdata <= {flags, controls};
-                32'h4: if (pwrite && reg_wen) registers[1] <= pwdata;
-                32'h8: if (!pwrite && reg_ren) prdata <= registers[2];
+                32'h0: if (pwrite) registers[0] <= pwdata; //write & read
+                        else if (!pwrite) prdata <= {/* flags,  */controls};
+                32'h4: if (pwrite && reg_wen) registers[1] <= pwdata; //write only
+                32'h8: if (!pwrite && reg_ren) prdata <= registers[2]; //read only
             endcase
     end
 endmodule

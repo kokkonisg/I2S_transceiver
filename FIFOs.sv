@@ -19,10 +19,8 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     assign sdone = (sptr == 0);
 
     //basic FIFO mem logic for parallel input and serial output.
-    always_ff @(posedge wclk, negedge rst_) begin : proc_write
-        if(~rst_) begin
-            FIFO <= '{default: 0};
-        end else if (wr_en && !full) begin
+    always_ff @(posedge wclk) begin : proc_write
+        if (wr_en && !full) begin
             FIFO[wadr] <= din;
         end
     end
@@ -30,8 +28,9 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     assign dout = (OP.mute || OP.stop) ? 1'b0 : FIFO[radr][sptr];
 
     always_ff @(negedge rclk, negedge rst_) begin : proc_read
-        if (!rd_en) sptr <= maxp;
-        else if (rd_en && !empty && !OP.stop) begin
+        if (!rd_en) begin
+            sptr <= maxp;
+        end else if (rd_en && !empty && !OP.stop) begin
             sptr <= (sptr>0) ? sptr-1 : maxp;
         end
     end
@@ -42,45 +41,64 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     logic [ADDR:0] w2rsynch1, w2rsynch2;
     
     always_ff @(posedge wclk, negedge rst_) begin
-        if (!rst_) {r2wsynch1, r2wsynch2} <= 0;
-        else {r2wsynch2, r2wsynch1} <= {r2wsynch1, rgray};
+        if (!rst_) begin
+            {r2wsynch1, r2wsynch2} <= 0;
+        end else begin
+            {r2wsynch2, r2wsynch1} <= {r2wsynch1, rgray};
+        end
     end
 
     always_ff @(posedge rclk, negedge rst_) begin
-        if (!rst_) {w2rsynch1, w2rsynch2} <= 0;
-        else {w2rsynch2, w2rsynch1} <= {w2rsynch1, wgray};
+        if (!rst_) begin
+            {w2rsynch1, w2rsynch2} <= 0;
+        end else begin
+            {w2rsynch2, w2rsynch1} <= {w2rsynch1, wgray};
+        end    
     end
 
     //------------Empty & Full logic-------------
     always_ff @(negedge rclk, negedge rst_) begin
-        if (!rst_) {rbin, rgray} <= 0;
-        else {rbin, rgray} <= {rbinnext, rgraynext};
+        if (!rst_) begin
+            {rbin, rgray} <= 0;
+        end else begin
+            {rbin, rgray} <= {rbinnext, rgraynext};
+        end    
     end
+
     assign radr = rbin[ADDR-1:0];
     assign rbinnext = rbin + (rd_en & sdone & ~empty);
     assign rgraynext = (rbinnext>>1) ^ rbinnext;
 
     assign empty_val = (rgraynext == w2rsynch2);
     always_ff @(negedge rclk, negedge rst_) begin
-        if (!rst_) empty <= 1'b1;
-        else empty <= empty_val; 
+        if (!rst_) begin 
+            empty <= 1'b1;
+        end else begin 
+            empty <= empty_val; 
+        end
     end 
 
 
     always_ff @(posedge wclk, negedge rst_) begin
-        if (!rst_) {wbin, wgray} <= 0;
-        else {wbin, wgray} <= {wbinnext, wgraynext};
+        if (!rst_) begin 
+            {wbin, wgray} <= 0;
+        end else begin
+            {wbin, wgray} <= {wbinnext, wgraynext};
+        end
     end
+
     assign wadr = wbin[ADDR-1:0];
     assign wbinnext = wbin + (wr_en & !full);
     assign wgraynext = (wbinnext>>1) ^ wbinnext;
 
     assign full_val = (wgraynext == {~r2wsynch2[ADDR:ADDR-1], r2wsynch2[ADDR-2:0]});
     always_ff @(posedge wclk, negedge rst_) begin
-        if (!rst_) full <= 1'b0;
-        else full <= full_val; 
+        if (!rst_) begin 
+            full <= 1'b0;
+        end else begin
+            full <= full_val; 
+        end
     end 
-
 endmodule
 
 module RxFIFO #(WIDTH = 32, ADDR = 3) (
@@ -97,11 +115,10 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
     assign sdone = (sptr == 0);
 
     //basic FIFO mem logic for serial input and parallel output
-    always_ff @(posedge wclk, negedge rst_) begin : proc_write
-        if(~rst_) 
-            FIFO <= '{default: 0};
-        else if (!wr_en) sptr <= maxp;
-        else if (wr_en && !full && !OP.stop) begin
+    always_ff @(posedge wclk) begin : proc_write
+        if (!wr_en) begin
+            sptr <= maxp;
+        end else if (wr_en && !full && !OP.stop) begin
             FIFO[wadr][sptr] <= din;
             sptr <= (sptr>0) ? sptr-1 : maxp;
         end
@@ -119,45 +136,63 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
     logic [ADDR:0] w2rsynch1, w2rsynch2;
     
     always_ff @(posedge wclk, negedge rst_) begin
-        if (!rst_) {r2wsynch1, r2wsynch2} <= 0;
-        else {r2wsynch2, r2wsynch1} <= {r2wsynch1, rgray};
+        if (!rst_) begin 
+            {r2wsynch1, r2wsynch2} <= 0;
+        end else begin
+            {r2wsynch2, r2wsynch1} <= {r2wsynch1, rgray};
+        end
     end
 
     always_ff @(posedge rclk, negedge rst_) begin
-        if (!rst_) {w2rsynch1, w2rsynch2} <= 0;
-        else {w2rsynch2, w2rsynch1} <= {w2rsynch1, wgray};
+        if (!rst_) begin 
+            {w2rsynch1, w2rsynch2} <= 0;
+        end else begin
+            {w2rsynch2, w2rsynch1} <= {w2rsynch1, wgray};
+        end
     end
 
     //------------Empty & Full logic-------------
     always_ff @(posedge rclk, negedge rst_) begin
-        if (!rst_) {rbin, rgray} <= 0;
-        else {rbin, rgray} <= {rbinnext, rgraynext};
+        if (!rst_) begin 
+            {rbin, rgray} <= 0;
+        end else begin
+            {rbin, rgray} <= {rbinnext, rgraynext};
+        end
     end
+
     assign radr = rbin[ADDR-1:0];
     assign rbinnext = rbin + (rd_en & !empty);
     assign rgraynext = (rbinnext>>1) ^ rbinnext;
 
     assign empty_val = (rgraynext == w2rsynch2);
     always_ff @(posedge rclk, negedge rst_) begin
-        if (!rst_) empty <= 1'b1;
-        else empty <= empty_val; 
+        if (!rst_) begin
+            empty <= 1'b1;
+        end else begin
+            empty <= empty_val; 
+        end    
     end 
 
 
     always_ff @(posedge wclk, negedge rst_) begin
-        if (!rst_) {wbin, wgray} <= 0;
-        else {wbin, wgray} <= {wbinnext, wgraynext};
+        if (!rst_) begin {wbin, wgray} <= 0;
+        end else begin 
+            {wbin, wgray} <= {wbinnext, wgraynext};
+        end    
     end
+
     assign wadr = wbin[ADDR-1:0];
     assign wbinnext = wbin + (wr_en & sdone & !full);
     assign wgraynext = (wbinnext>>1) ^ wbinnext;
 
     assign full_val = (wgraynext == {~r2wsynch2[ADDR:ADDR-1], r2wsynch2[ADDR-2:0]});
     always_ff @(posedge wclk, negedge rst_) begin
-        if (!rst_) full <= 1'b0;
-        else full <= full_val; 
+        if (!rst_) begin
+            full <= 1'b0;
+        end else begin
+            full <= full_val; 
+        end
     end 
-
 endmodule
 
 

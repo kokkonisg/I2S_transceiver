@@ -13,14 +13,16 @@ module reg_interface (
     assign registers[2] = Rx_data;
 
     always_ff @(posedge pclk) begin
-        if (!preset) registers[0:1] <= '{default: 0};
-        else if (penable) 
+        if (!preset) begin
+            registers[0:1] <= '{default: 0};
+        end else if (penable) begin 
             case (addr)
                 32'h0: if (pwrite) registers[0] <= pwdata; //write & read
                         else if (!pwrite) prdata <= {/* flags,  */controls};
                 32'h4: if (pwrite && reg_wen) registers[1] <= pwdata; //write only
                 32'h8: if (!pwrite && reg_ren) prdata <= registers[2]; //read only
             endcase
+        end
     end
 endmodule
 
@@ -37,26 +39,30 @@ module reg_control (
             if (!Tx_full && occTx) begin: wr_TxFIFO
                 Tx_wen <= 1'b1;
                 occTx <= 1'b0;
+            end else begin
+                Tx_wen <= 1'b0;
             end
-            else Tx_wen <= 1'b0;
 
             if (penable && pwrite && addr==32'h4 && !occTx) begin: wr_TxReg
                 reg_wen <= 1'b1;
                 occTx <= 1'b1;
+            end else begin
+                reg_wen <= 1'b0;
             end
-            else reg_wen <= 1'b0;
 
             if (!Rx_empty && !occRx) begin: rd_RxFIFO
                 Rx_ren <= 1'b1;
                 occRx <= 1'b1;
+            end else begin
+                Rx_ren <= 1'b0;
             end
-            else Rx_ren <= 1'b0;
 
             if (penable && !pwrite && addr==32'h8 && occRx) begin: rd_RxReg
                 reg_ren <= 1'b1;
                 occRx <= 1'b0;
+            end else begin
+                reg_ren <= 1'b0;
             end
-            else reg_ren <= 1'b0;
         end
     end
 endmodule

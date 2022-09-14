@@ -37,29 +37,53 @@ module clk_div(
 	always_comb
 		if (OP.mclk_en) begin
 			mclk = (!en25) ? (!N[0] ? ev_clk : div1^div2) : clk25;
-			if (!OP.stereo && OP.frame_size==f16bits) sclk = f16;
-			else if (!OP.stereo && OP.frame_size==f32bits) sclk = f8;
-			else if (OP.stereo && OP.frame_size==f16bits) sclk = f8;
-			else if (OP.stereo && OP.frame_size==f32bits) sclk = f4;
-		end else
+
+			if (!OP.stereo && OP.frame_size==f16bits) begin
+				sclk = f16;
+			end else if (!OP.stereo && OP.frame_size==f32bits) begin
+				sclk = f8;
+			end else if (OP.stereo && OP.frame_size==f16bits) begin
+				sclk = f8;
+			end else if (OP.stereo && OP.frame_size==f32bits) begin
+				sclk = f4;
+			end else begin
+				sclk = mclk;
+			end
+		end else begin
 			sclk = (!en25) ? (!N[0] ? ev_clk : div1^div2) : clk25;
+		end
 
+	always_ff @(posedge mclk, negedge rst_) begin
+		if (!rst_) begin
+			f2 <= 1'b0;
+		end	else begin 
+			f2 <= !f2;
+		end
+	end
 
-	always_ff @(posedge mclk, negedge rst_)
-		if (!rst_) f2 <= 1'b0;
-		else f2 <= !f2;
+	always_ff @(posedge f2, negedge rst_) begin
+		if (!rst_) begin 
+			f4 <= 1'b0;
+		end else begin 
+			f4 <= !f4;
+		end
+	end
 
-	always_ff @(posedge f2, negedge rst_)
-		if (!rst_) f4 <= 1'b0;
-		else f4 <= !f4;
+	always_ff @(posedge f4, negedge rst_) begin
+		if (!rst_) begin 
+			f8 <= 1'b0;
+		end else begin 
+			f8 <= !f8;
+		end
+	end
 
-	always_ff @(posedge f4, negedge rst_)
-		if (!rst_) f8 <= 1'b0;
-		else f8 <= !f8;
-
-	always_ff @(posedge f8, negedge rst_)
-		if (!rst_) f16 <= 1'b0;
-		else f16 <= !f16;
+	always_ff @(posedge f8, negedge rst_) begin
+		if (!rst_) begin 
+			f16 <= 1'b0;
+		end else begin 
+			f16 <= !f16;
+		end
+	end
 
 	always_ff @(posedge pclk, negedge rst_) begin
 		if (!rst_) begin
@@ -70,27 +94,38 @@ module clk_div(
 		end
 	end
 
-	always_ff @(posedge pclk)
-		if (en)
+	always_ff @(posedge pclk) begin
+		if (en) begin
 			case (N[0])
-				1'b0: if (counter==(N/2-1))
+				1'b0: if (counter==(N/2-1)) begin
 						{counter, ev_clk} <= {6'h0, ~ev_clk};
-				1'b1: if (counter==0) div1 <= ~div1;
+					end
+				1'b1: if (counter==0) begin
+						div1 <= ~div1;
+					end
 			endcase
+		end
+	end
 
-	always_ff @(negedge pclk)
-		if (en)
-			if (N[0]==1'b1 && counter==(N+1)/2) div2 <= ~div2;	
+	always_ff @(negedge pclk) begin
+		if (en) begin
+			if (N[0]==1'b1 && counter==(N+1)/2) begin
+				div2 <= ~div2;	
+			end
+		end
+	end
 
 
 	logic A, B, C, O;
-	always_ff @(posedge pclk, negedge rst_)
-		if (!rst_) {A,B,C} <= 1'b0;
-		else if (en25) begin
+	always_ff @(posedge pclk, negedge rst_) begin
+		if (!rst_) begin
+			{A,B,C} <= 1'b0;
+		end else if (en25) begin
 			A <= !A & !B & !C;
 			B <= (A | B) & !C;
 			C <= B;
 		end
+	end
 
 	assign O = (!pclk & B & C) | (pclk & O);
 	assign clk25 = A | O;
@@ -107,12 +142,16 @@ module div_calc (
 
 	always_comb begin
 		{enN, en25} = 1'b0;
-		if (OP.mode inside {MT, MR})
+		if (OP.mode inside {MT, MR}) begin
 			case (OP.mclk_en)
-			  1'b1: if (OP.sys_freq==k32) case (OP.sample_rate)
-						hz44: {N, enN} = {6'd3, 1'b1};
-						hz48: en25 = 1'b1;
-					endcase
+			  1'b1: if (OP.sys_freq==k32) begin
+			  			case (OP.sample_rate)
+							hz44: {N, enN} = {6'd3, 1'b1};
+							hz48: en25 = 1'b1;
+						endcase
+					end else begin
+						{N, enN} = {6'd1, 1'b1};
+					end
 			  1'b0: case (OP.sys_freq)
 					k8: case (OP.stereo)
 						1'b1: case (OP.sample_rate)
@@ -179,9 +218,11 @@ module div_calc (
 								f32bits: {N, enN} = {6'd21,1'b1};
 							endcase
 						endcase
+					default: {N, enN} = {6'd1, 1'b1};
 					endcase
 				endcase 
 			endcase 
+		end
 	end
 
 endmodule : div_calc

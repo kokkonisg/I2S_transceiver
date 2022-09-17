@@ -12,7 +12,8 @@ module clk_tbench;
 	always forever #2 pclk <= !pclk;
 
 	initial begin
-		pclk <= 1'b0;rst_<=1'b0;
+		pclk <= 1'b0;
+        rst_<=1'b0;
 		@(posedge pclk) rst_<=1'b1;
 	end
 endmodule
@@ -39,20 +40,19 @@ module clk_div(
 			mclk = (!en25) ? (!N[0] ? ev_clk : div1^div2) : clk25;
 
 			if (!OP.stereo && OP.frame_size==f16bits) begin
-				sclk = f16;
-			end else if (!OP.stereo && OP.frame_size==f32bits) begin
-				sclk = f8;
-			end else if (OP.stereo && OP.frame_size==f16bits) begin
-				sclk = f8;
+				sclk = f16; 
 			end else if (OP.stereo && OP.frame_size==f32bits) begin
 				sclk = f4;
-			end else begin
-				sclk = mclk;
+			end else begin //mono & 32bit frame OR stereo & 16bit frame
+				sclk = f8;
 			end
 		end else begin
 			sclk = (!en25) ? (!N[0] ? ev_clk : div1^div2) : clk25;
 		end
 
+
+//----Toggle FFs to create a 2^N divider----
+//used to produce the sclk from mclk whenever mclk_en is high
 	always_ff @(posedge mclk, negedge rst_) begin
 		if (!rst_) begin
 			f2 <= 1'b0;
@@ -84,7 +84,9 @@ module clk_div(
 			f16 <= !f16;
 		end
 	end
+//------------------------------------------
 
+//----Divider by N where N is either odd or even----
 	always_ff @(posedge pclk, negedge rst_) begin
 		if (!rst_) begin
 			{counter, ev_clk} <= 0;
@@ -114,7 +116,9 @@ module clk_div(
 			end
 		end
 	end
+//--------------------------------------------------
 
+//----Divider by 2.5----
 
 	logic A, B, C, O;
 	always_ff @(posedge pclk, negedge rst_) begin
@@ -129,7 +133,7 @@ module clk_div(
 
 	assign O = (!pclk & B & C) | (pclk & O);
 	assign clk25 = A | O;
-
+//----------------------
 endmodule	
 
 
@@ -150,7 +154,7 @@ module div_calc (
 							hz48: en25 = 1'b1;
 						endcase
 					end else begin
-						{N, enN} = {6'd1, 1'b1};
+						{N, enN} = {6'd1, 1'b1}; //should never happen
 					end
 			  1'b0: case (OP.sys_freq)
 					k8: case (OP.stereo)
@@ -218,8 +222,8 @@ module div_calc (
 								f32bits: {N, enN} = {6'd21,1'b1};
 							endcase
 						endcase
-					default: {N, enN} = {6'd1, 1'b1};
 					endcase
+					default: {N, enN} = {6'd1, 1'b1}; //should never happen
 				endcase 
 			endcase 
 		end

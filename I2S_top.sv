@@ -37,7 +37,7 @@ assign sclk = (OP.mode inside {MT,MR}) ? sclk_gen : 1'bZ;
 
 reg_interface Ureg(
     .pclk,
-    .presete,
+    .preset,
     .penable,
     .pwrite,
     .addr,

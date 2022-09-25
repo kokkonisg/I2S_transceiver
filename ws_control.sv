@@ -143,7 +143,7 @@ module ws_tbench;
     logic ws;
     ws_state_t state;
 
-    ws_gen u1(.clk, .rst_, .Tx_empty, .Rx_full, .OP, .ws, .state);
+    ws_gen u1(.clk, .rst_, .Tx_empty(), .Rx_full(), .OP, .ws, .state);
 
     ws_tracker u2(.clk, .rst_, .ws, .OP, .state);
 

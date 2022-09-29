@@ -28,6 +28,7 @@ assign addr = paddr - ADR_OFFSET;
 // assign flags = {Tx_full, Tx_empty, Rx_full, Rx_empty};
 assign OP = controls;
 
+//tri-state buffers for inout ports
 logic sd_gen, sclk_gen, ws_gen;
 assign sd = (OP.mode inside {MT,ST}) ? sd_gen : 1'bZ;
 
@@ -35,6 +36,8 @@ assign ws = (OP.mode inside {MT,MR}) ? ws_gen : 1'bZ;
 
 assign sclk = (OP.mode inside {MT,MR}) ? sclk_gen : 1'bZ;
 
+
+//module definitions
 reg_interface Ureg(
     .pclk,
     .preset,
@@ -121,6 +124,8 @@ RxFIFO Urx(
 );
 endmodule
 
+//a function that transforms the input data from PCM encoder to the desired format 
+//(ex. a word encoded in 16bits -> 32bit frame with LSB standard, meaning zero-fill 16 MSBs)
 function logic [31:0] preprocess;
     input logic [31:0] din;
     input OP_t OP;
@@ -148,6 +153,9 @@ function logic [31:0] preprocess;
     preprocess = dout;
 endfunction
 
+
+//the reverse of the above function
+//ex. for a 32bit frame with LSB standard containing a 16bit word -> the 16 LSBs are real data
 function logic [31:0] postprocess;
     input logic [31:0] din;
     input OP_t OP;

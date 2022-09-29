@@ -1,6 +1,9 @@
 `include "package.sv"
 import ctrl_pkg::*;
 
+
+//when I2S operates in master mode the ws signal is generated using an fsm 
+//and starts/stops using the OP.tran_en (transcaction enable) control bit
 module ws_gen(
     input logic clk, rst_, Tx_empty, Rx_full,
     OP_t OP,
@@ -54,6 +57,9 @@ module ws_gen(
     end
 endmodule
 
+//when I2S operates in slave mode the ws signal is being tracked with
+//the help of a delayed ws signal (ws_old) and the state of the signal 
+//is then outputed to be used bu ws_control (states: L,R channel or IDLE)
 module ws_tracker(
     input logic clk, rst_, ws, OP_t OP,
     output ws_state_t state);
@@ -73,10 +79,19 @@ always_ff @(negedge clk, negedge rst_) begin
     end
 end
 
+//for when the counter is truely zero
 let cntZ = ((OP.frame_size==f32bits && cnt==5'h0) || (OP.frame_size==f16bits && cnt[3:0]==4'h0));
+
+//for when the ws channel changes from R to L (or channel 1 to channel 2 it isnt necessarily L and R)
 let RtoL = (OP.standard==I2S) ? (ws_old && !ws) : (!ws_old && ws); //same as IDLEtoL
+
+//for when the ws channel changes from L to R
 let LtoR = OP.stereo & ((OP.standard==I2S) ? (!ws_old && ws) : (ws_old && !ws));
+
+//for when the ws channel changes from R to idle 
 let RtoIDL = OP.stereo & ((OP.standard==I2S) ? (ws_old && ws && cntZ) : (!ws_old && !ws && cntZ));
+
+//for when the ws channel changes from L to idle, should only happen in mono mode and not in stereo 
 let LtoIDL = OP.stereo ? 
               ((OP.standard==I2S) ? (!ws_old && !ws && cntZ) : (ws_old && ws && cntZ)) :
               ((OP.standard==I2S) ? (!ws_old && ws) : (ws_old && !ws));
@@ -110,10 +125,10 @@ module ws_control(
     ws_tracker Uwst(.clk(sclk), .rst_(preset), .OP, .ws, .state(ws_tr_state));
 
     //depending on the peripheral's mode, 
-    //only one of the above modules needs to run and that one's state is outputed to the top module
+    //only one of the above modules needs to run
     assign ws_state = (OP.mode inside {MT, MR}) ? ws_gen_state : ws_tr_state;
 
-
+    //dellayed enables are used for I2S Phillips standard which requires a 1 clok cycle dellay
     always_ff @(negedge sclk or negedge preset) begin : proc_del_en
         if (!preset) begin
             {del_Tx_ren, del_Rx_wen} <= 0;
@@ -122,6 +137,7 @@ module ws_control(
         end    
     end
 
+    //controls when the Transmitting (Recieving) FIFO starts sending (accepting) bits based on ws state
     always_comb begin : proc_ws_fifo_synch
         if (ws_state inside {L,R}) begin
             {Tx_ren, Rx_wen} = 2'b0;

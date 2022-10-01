@@ -36,7 +36,7 @@ module ws_gen(
 
             L: if ((OP.frame_size==f32bits && cnt==5'h1f) 
                   || (OP.frame_size==f16bits && cnt[3:0]==4'hf)) begin
-                    nextstate <= (OP.stereo) ? R : (enable) ? L : IDLE;
+                    nextstate <= (OP.stereo) ? R : ((enable) ? L : IDLE);
                 end
 
             R: if ((OP.frame_size==f32bits && cnt==5'h1f) 

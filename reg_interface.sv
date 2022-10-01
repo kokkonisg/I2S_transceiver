@@ -34,7 +34,7 @@ module reg_control (
     logic occTx, occRx;
 
     //To check wether the register is full or not
-    //(meaning if the data has been accessed already)
+    //(meaning if the data has been accessed already or not)
     //the occ (occupied) bits are used being high for full, low for empty
 
     always_ff @(negedge pclk, negedge preset) begin: proc_reg_fifo_dataex

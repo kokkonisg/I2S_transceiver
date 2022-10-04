@@ -34,8 +34,10 @@ data is displayed as well as a Pass or Fail statement, if the two data slices
 
 logic [31:0] INPUT_DATA [$]; //actually could be a static array
 logic [31:0] OUTPUT_DATA [$];
+int num_of_words = 256;
+
 initial begin
-    for (int i=0;i<256;i++) begin
+    for (int i=0; i<num_of_words; i++) begin
         if (OPtx.word_size==w16bits) begin
             INPUT_DATA.push_front($urandom(i)>>16);
         end else if (OPtx.word_size==w24bits) begin
@@ -44,15 +46,15 @@ initial begin
             INPUT_DATA.push_front($urandom(i));
         end
     end
-    $displayh("initial IN: %p", INPUT_DATA[$-10:$]);
-    $displayh("initial OUT: %p", OUTPUT_DATA);
 end
 
-int i=255;
+int j = num_of_words-1;
 always @(negedge pclk) begin    
     if (!Utr.Uregc.occTx && penable && pwrite && paddr==32'h4) begin
-        pwdata<=INPUT_DATA[i];
-        i<=i-1;
+        pwdata<=INPUT_DATA[j];
+        if (j >= 0) begin
+            j <= j-1;
+        end
     end
 
     if ($past(Urc.Uregc.reg_ren && paddr==32'h18)) begin
@@ -64,8 +66,8 @@ end
 function string check_data (logic [31:0] q1 [$],logic [31:0] q2 [$]);
     automatic int size = q1.size() < q2.size() ? q1.size() : q2.size();
     automatic logic check = 1'b1;
-    for (int i=0; i<size; i++) begin
-        check = check & (q1[$-i]==q2[$-i]);
+    for (int l=0; l<size; l++) begin
+        check = check & (q1[$-l]==q2[$-l]);
         //$display("IN:%h OUT:%h -- %b",q1[$-i],q2[$-i],q1[$-i]==q2[$-i]); //BUG CHECK
     end
     return (check) ? "PASS" : "FAIL";
@@ -78,47 +80,59 @@ always @(posedge pclk) begin
 end
 //-------------------------------------------------------------------------
 
-
 //First the control bits are defined using OP
 //Then some data is loaded to-be transmitted
 //the transaction is enabled
 //some data is being recieved and read
-//then a loop occures where data is inputed and outputed so the FIFOs dont empty/fill
+//then a loop occures where data is inputted and outputted so the FIFOs dont empty/fill
 //in the end the transmission is stopped
-initial begin
-    temp_sclk <= 1'b0;
-    preset<=1'bx;pclk<=1'b0;
-    #(CLK_PERIOD*3) preset<=0;
-    #(CLK_PERIOD*3) preset<=1;
-    @(posedge pclk) penable<=1'b1;pwrite<=1'b1;paddr<=32'h0;pwdata<=OPtx;
-    @(posedge pclk);
-    @(posedge pclk) paddr<=32'h4;temp_sclk <= 1'bZ;
-    repeat (5) @(posedge pclk);
-    repeat (15) @(posedge pclk); 
-    paddr<=32'h10; pwdata<=OPrx; OPtx.tran_en <= 1'b1;
-    @(posedge pclk);
-    paddr<=32'h0;pwdata<=OPtx;
-    @(posedge pclk); 
-    repeat (38) @(posedge sclk) paddr<=32'h18;pwrite<=1'b0;
-    repeat (30) @(posedge sclk);
-    repeat (10) begin
-        @(posedge pclk) paddr<=32'h4;pwrite<=1'b1;
-        repeat (20) @(posedge pclk);
-        @(posedge pclk) paddr<=32'h18;pwrite<=1'b0;
-        repeat (150) @(posedge sclk);
-    end    
-    $display("%0t NO MORE INPUT IN TxFIFO ENDING TRANSMISSION",$stime);
-    OPtx.tran_en<=1'b0;
-    @(posedge pclk)
-      pwrite<=1'b1;paddr<=32'h0;pwdata<=OPtx;
-    @(posedge pclk) paddr<=32'h18;pwrite<=1'b0;
-    // @(posedge pclk) pwrite<=1'b1;paddr<=32'h4;pwdata<=$urandom($stime);
-    // @(posedge pclk) pwrite<=1'b1;paddr<=32'h4;pwdata<=$urandom($stime);
-    // @(posedge pclk) pwrite<=1'b1;paddr<=32'h4;pwdata<=$urandom($stime);
-    // repeat (38) @(posedge sclk) paddr<=32'h18;pwrite<=1'b0;
-    
-    //pwrite<=1'b1;paddr<=32'h4;pwdata<=$urandom(1);
 
+int loop=0, num_of_loops=4; //just some help vars for the looping
+
+initial begin
+    $displayh("initial IN: %p", INPUT_DATA[$-4*(num_of_loops+1):$]);
+    $displayh("initial OUT: %p", OUTPUT_DATA);
+
+
+    temp_sclk <= 1'b0;
+    preset<=1'bx;pclk<=1'bx;
+    #(CLK_PERIOD) pclk<=1'b0;
+    #(CLK_PERIOD*3) preset<=1'b0;
+    #(CLK_PERIOD*3) preset<=1'b1;
+
+    //parsing control bits
+    @(posedge pclk); penable<=1'b1; pwrite<=1'b1; paddr<=32'h00; pwdata<=OPtx;
+    @(posedge pclk); penable<=1'b1; pwrite<=1'b1; paddr<=32'h10; pwdata<=OPrx;
+
+    //first load of data in TxFIFO
+    @(posedge pclk) paddr<=32'h4; temp_sclk <= 1'bZ;
+    repeat (15) @(posedge pclk); 
+
+    //starting data transmission
+    OPtx.tran_en <= 1'b1;
+    @(posedge pclk); paddr<=32'h00; pwdata<=OPtx;
+    
+    //reading data being recieved first
+    @(posedge pclk); paddr<=32'h18; pwrite<=1'b0;
+    repeat (38) @(posedge sclk)
+
+    //loop to write & read data
+    while (loop < num_of_loops) begin 
+        @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
+        repeat (20) @(posedge pclk);
+        @(posedge pclk) paddr<=32'h18; pwrite<=1'b0;
+        repeat (150) @(posedge sclk);
+        $display("\nloop no%0d\n",loop+1);
+        loop++;
+    end
+
+    //end of transmission
+    OPtx.tran_en<=1'b0;
+    @(posedge pclk) pwrite<=1'b1; paddr<=32'h0; pwdata<=OPtx;
+    $display("%0t NO MORE INPUT IN TxFIFO ENDING TRANSMISSION",$stime);
+
+    //reading the last frame being transmitted 
+    @(posedge pclk) paddr<=32'h18;pwrite<=1'b0;
     
     
 end

@@ -17,13 +17,13 @@ module ws_gen(
         if (!rst_) begin
             {state, cnt} <= {IDLE ,5'hff};
         end else begin
-            {state, cnt} <= {nextstate, (enable && !OP.stop) ? cnt+1'b1 : cnt};
+            {state, cnt} <= {nextstate, (enable) ? cnt+1'b1 : cnt};
         end
     end
 
     //latch to send the whole frame if transaction is disabled midway 
     always_latch if((OP.frame_size==f32bits && cnt==5'h1f) || (OP.frame_size==f16bits && cnt[3:0]==4'hf)) begin  
-        enable = OP.tran_en & ((OP.mode==MT & !Tx_empty) | (OP.mode==MR & !Rx_full));
+        enable = !OP.stop & ((OP.mode==MT & !Tx_empty) | (OP.mode==MR & !Rx_full));
     end
 
     always_comb begin
@@ -73,7 +73,7 @@ always_ff @(negedge clk, negedge rst_) begin
         cnt <= 5'h0;
     end else begin
         ws_old <= ws;
-        if (OP.mode inside {ST, SR} && cnt_en && !OP.stop) begin
+        if (OP.mode inside {ST, SR} && cnt_en /*&& !OP.stop*/) begin
             cnt <= cnt+1'b1;
         end    
     end
@@ -152,27 +152,27 @@ module ws_control(
 
 endmodule
 
-module ws_tbench;
-    logic clk=0;
-    logic rst_=1;
-    OP_t OP = '{default: 0, frame_size: f32bits, standard: MSB};
-    logic ws;
-    ws_state_t state;
+// module ws_tbench;
+//     logic clk=0;
+//     logic rst_=1;
+//     OP_t OP = '{default: 0, frame_size: f32bits, standard: MSB};
+//     logic ws;
+//     ws_state_t state;
 
-    ws_gen u1(.clk, .rst_, .Tx_empty(), .Rx_full(), .OP, .ws, .state);
+//     ws_gen u1(.clk, .rst_, .Tx_empty(), .Rx_full(), .OP, .ws, .state);
 
-    ws_tracker u2(.clk, .rst_, .ws, .OP, .state);
+//     ws_tracker u2(.clk, .rst_, .ws, .OP, .state);
 
-    always forever #1 clk <= ~clk;
+//     always forever #1 clk <= ~clk;
 
-    initial begin
-    @(posedge clk) rst_<=0;
-    @(posedge clk) rst_<=1;
-    repeat(2) @(posedge clk);
-    OP.tran_en<=1;
-    repeat(50) @(posedge clk);
-    @(u1.cnt==5'hff) OP.tran_en<=0;
-    repeat(25) @(posedge clk);
-    OP.tran_en<=1;
-    end
-endmodule
+//     initial begin
+//     @(posedge clk) rst_<=0;
+//     @(posedge clk) rst_<=1;
+//     repeat(2) @(posedge clk);
+//     OP.tran_en<=1;
+//     repeat(50) @(posedge clk);
+//     @(u1.cnt==5'hff) OP.tran_en<=0;
+//     repeat(25) @(posedge clk);
+//     OP.tran_en<=1;
+//     end
+// endmodule

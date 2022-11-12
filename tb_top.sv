@@ -8,8 +8,8 @@ logic pclk, penable, pwrite;
 logic preset, temp_sclk;
 logic [31:0] paddr, pwdata, prdata;
 wire sclk, mclk, ws, sd;
-OP_t OPtx ='{default: 0, standard: MSB, mode: MT, word_size: w32bits, frame_size: f32bits, stereo: 1'b1};
-OP_t OPrx ='{default: 0, standard: MSB, mode: SR, word_size: w32bits, frame_size: f32bits, stereo: 1'b1};
+OP_t OPtx ='{default: 0, standard: MSB, mode: MT, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1};
+OP_t OPrx ='{default: 0, standard: MSB, mode: SR, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1};
 OP_t OPmstr = '{default: 0, standard: MSB, mode: MT, word_size: w32bits, frame_size: f32bits, stereo: 1'b1};
 
 
@@ -87,10 +87,10 @@ end
 //then a loop occures where data is inputted and outputted so the FIFOs dont empty/fill
 //in the end the transmission is stopped
 
-int loop=0, num_of_loops=4; //just some help vars for the looping
+int loop=0, num_of_loops=9; //just some help vars for the looping
 
 initial begin
-    $displayh("initial IN: %p", INPUT_DATA[$-4*(num_of_loops+1):$]);
+    $displayh("initial IN: %p", INPUT_DATA[$-5*num_of_loops:$]);
     $displayh("initial OUT: %p", OUTPUT_DATA);
 
 
@@ -109,7 +109,7 @@ initial begin
     repeat (15) @(posedge pclk); 
 
     //starting data transmission
-    OPtx.tran_en <= 1'b1;
+    OPtx.stop <= 1'b0;
     @(posedge pclk); paddr<=32'h00; pwdata<=OPtx;
     
     //reading data being recieved first
@@ -126,8 +126,9 @@ initial begin
         loop++;
     end
 
+
     //end of transmission
-    OPtx.tran_en<=1'b0;
+    OPtx.stop<=1'b1;
     @(posedge pclk) pwrite<=1'b1; paddr<=32'h0; pwdata<=OPtx;
     $display("%0t NO MORE INPUT IN TxFIFO ENDING TRANSMISSION",$stime);
 

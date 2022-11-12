@@ -14,7 +14,8 @@ module reg_interface (
 
     always_ff @(posedge pclk) begin
         if (!preset) begin
-            registers[0:1] <= '{default: 0};
+            registers[0] <= '{default: 0}; //change reset values
+            registers[1] <= '{default: 0};
         end else if (penable) begin 
             case (addr)
                 32'h0: if (pwrite) registers[0] <= pwdata; //write & read

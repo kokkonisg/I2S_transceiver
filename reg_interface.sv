@@ -12,10 +12,10 @@ module reg_interface (
     assign Tx_data = registers[1];
     assign registers[2] = Rx_data;
 
-    always_ff @(posedge pclk) begin
+    always_ff @(posedge pclk, negedge preset) begin
         if (!preset) begin
-            registers[0] <= '{default: 0}; //change reset values
-            registers[1] <= '{default: 0};
+            registers[0] <= 32'b001111011010101; //change reset values
+            registers[1] <= 32'b0;
         end else if (penable) begin 
             case (addr)
                 32'h0: if (pwrite) registers[0] <= pwdata; //write & read

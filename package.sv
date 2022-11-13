@@ -15,7 +15,7 @@ package ctrl_pkg;
     //NOTE: frame size has higher priority tha word size, meaning if word>frame then word's MSBs are automatically trimmed
     //      if frame>word the remaining bits are zero-filled (MSBs or LSBs depending on the standard)
 	sys_freq_t sys_freq; //the systems main clock frequency
-	logic stereo, mclk_en, stop, mute; //misc. options
+	logic stereo, mclk_en, stop, mute, rst; //misc. options
         //stop: while high stops the transmission (and reception) of data
         //mute: when high mutes (convert to 0) the data being recieved
         //mclk_en: when high master clock output is enabled

@@ -71,13 +71,13 @@ clk_div Udiv(
     .sclk(sclk_gen),
     .pclk,
     .mclk,
-    .rst_(preset),
+    .rst_(preset & OP.rst),
     .OP
 );
 
 ws_gen Uwsg (
     .clk(sclk),
-    .rst_(preset),
+    .rst_(preset & OP.rst),
     .OP,
     .ws(ws_gen),
     .state(ws_gen_state),
@@ -87,7 +87,7 @@ ws_gen Uwsg (
 
 ws_control Uwsc (
     .sclk,
-    .preset,
+    .preset(preset & OP.rst),
     .ws,
     .OP,
     .ws_gen_state,
@@ -102,7 +102,7 @@ TxFIFO Utx(
     .rclk(sclk),
     .wr_en(Tx_wen),
     .rd_en(OP.standard==I2S ? del_Tx_ren : Tx_ren),
-    .rst_(preset),
+    .rst_(preset & OP.rst),
     .OP,
     .din(preprocess(Tx_data, OP)),
     .dout(sd_gen),
@@ -115,7 +115,7 @@ RxFIFO Urx(
     .wclk(sclk),
     .rd_en(Rx_ren),
     .wr_en(OP.standard==I2S ? del_Rx_wen : Rx_wen),
-    .rst_(preset),
+    .rst_(preset & OP.rst),
     .OP,
     .dout(Rx_data),
     .din(sd),

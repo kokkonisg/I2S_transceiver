@@ -15,7 +15,7 @@ module ws_gen(
     ws_state_t nextstate;
     always_ff @(negedge clk, negedge rst_) begin
         if (!rst_) begin
-            {state, cnt} <= {IDLE ,5'hff};
+            {state, cnt} <= {IDLE, 5'hff};
         end else begin
             {state, cnt} <= {nextstate, (enable) ? cnt+1'b1 : cnt};
         end
@@ -36,7 +36,7 @@ module ws_gen(
 
             L: if ((OP.frame_size==f32bits && cnt==5'h1f) 
                   || (OP.frame_size==f16bits && cnt[3:0]==4'hf)) begin
-                    nextstate <= (OP.stereo) ? R : ((enable) ? L : IDLE);
+                    nextstate <= (OP.stereo) ? ((enable) ? R : IDLE) : ((enable) ? L : IDLE);
                 end
 
             R: if ((OP.frame_size==f32bits && cnt==5'h1f) 
@@ -79,7 +79,7 @@ always_ff @(negedge clk, negedge rst_) begin
     end
 end
 
-//for when the counter is truely zero
+//for when the counter is truely zero (deppending in frame size)
 let cntZ = ((OP.frame_size==f32bits && cnt==5'h0) || (OP.frame_size==f16bits && cnt[3:0]==4'h0));
 
 //for when the ws channel changes from R to L (or channel 1 to channel 2 it isnt necessarily L and R)

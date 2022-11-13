@@ -57,7 +57,7 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     end
 
     //------------Empty & Full logic-------------
-    always_ff @(negedge rclk, negedge rst_) begin
+    always_ff @(posedge rclk, negedge rst_) begin
         if (!rst_) begin
             {rbin, rgray} <= 0;
         end else begin
@@ -70,7 +70,7 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     assign rgraynext = (rbinnext>>1) ^ rbinnext;
 
     assign empty_val = (rgraynext == w2rsynch2);
-    always_ff @(negedge rclk, negedge rst_) begin
+    always_ff @(posedge rclk, negedge rst_) begin
         if (!rst_) begin 
             empty <= 1'b1;
         end else begin 

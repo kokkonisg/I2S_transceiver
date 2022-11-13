@@ -1,22 +1,22 @@
 `include "package.sv"
 import ctrl_pkg::*;
 
-module clk_tbench;
-	logic pclk, rst_, sclk, mclk;
-	OP_t OP = '{default: 0, mclk_en: 1'b1, mode: MT, stereo:1'b1};
-	int cnt=0;
-	always forever @(posedge pclk) if(rst_) cnt++;
+// module clk_tbench;
+// 	logic pclk, rst_, sclk, mclk;
+// 	OP_t OP = '{default: 0, mclk_en: 1'b1, mode: MT, stereo:1'b1};
+// 	int cnt=0;
+// 	always forever @(posedge pclk) if(rst_) cnt++;
 
-	clk_div Udiv (.*);
+// 	clk_div Udiv (.*);
 
-	always forever #2 pclk <= !pclk;
+// 	always forever #2 pclk <= !pclk;
 
-	initial begin
-		pclk <= 1'b0;
-        rst_<=1'b0;
-		@(posedge pclk) rst_<=1'b1;
-	end
-endmodule
+// 	initial begin
+// 		pclk <= 1'b0;
+//         rst_<=1'b0;
+// 		@(posedge pclk) rst_<=1'b1;
+// 	end
+// endmodule
 
 
 module clk_div(

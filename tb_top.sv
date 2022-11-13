@@ -8,8 +8,8 @@ logic pclk, penable, pwrite;
 logic preset, temp_sclk;
 logic [31:0] paddr, pwdata, prdata;
 wire sclk, mclk, ws, sd;
-OP_t OPtx ='{default: 0, standard: MSB, mode: MT, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1};
-OP_t OPrx ='{default: 0, standard: MSB, mode: SR, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1};
+OP_t OPtx ='{default: 0, standard: MSB, mode: MT, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
+OP_t OPrx ='{default: 0, standard: MSB, mode: SR, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
 OP_t OPmstr = '{default: 0, standard: MSB, mode: MT, word_size: w32bits, frame_size: f32bits, stereo: 1'b1};
 
 
@@ -63,19 +63,19 @@ always @(negedge pclk) begin
 end
 
 //just a help function to return the pass or fail
-function string check_data (logic [31:0] q1 [$],logic [31:0] q2 [$]);
-    automatic int size = q1.size() < q2.size() ? q1.size() : q2.size();
+function string check_data (logic [31:0] qIN [$],logic [31:0] qOUT [$], OP_t OP);
+    automatic int size = qIN.size() < qOUT.size() ? qIN.size() : qOUT.size();
     automatic logic check = 1'b1;
-    for (int l=0; l<size; l++) begin
-        check = check & (q1[$-l]==q2[$-l]);
-        //$display("IN:%h OUT:%h -- %b",q1[$-i],q2[$-i],q1[$-i]==q2[$-i]); //BUG CHECK
+    for (int k=0; k<size; k++) begin
+        check = check & (OP.frame_size == f32bits ? (qIN[$-k]==qOUT[$-k]) : (qIN[$-k][15:0]==qOUT[$-k][15:0]));
+        // $display("IN:%h OUT:%h -- %b -- %0b",qIN[$-k],qOUT[$-k],(OP.frame_size == f32bits ? (qIN[$-k]==qOUT[$-k]) : (qIN[$-k][15:0]==qOUT[$-k][15:0])),OP.frame_size); //BUG CHECK
     end
     return (check) ? "PASS" : "FAIL";
 endfunction
 
 always @(posedge pclk) begin
     if (OUTPUT_DATA.size() != $past(OUTPUT_DATA.size())) begin
-        $displayh("@%0t -- OUT: %p -- %b", $stime, OUTPUT_DATA[0:9], check_data(INPUT_DATA,OUTPUT_DATA));
+        $displayh("@%0t -- OUT: %p -- %b", $stime, OUTPUT_DATA[0:9], check_data(INPUT_DATA,OUTPUT_DATA, OPtx));
     end
 end
 //-------------------------------------------------------------------------
@@ -117,7 +117,7 @@ initial begin
     repeat (38) @(posedge sclk)
 
     //loop to write & read data
-    while (loop < num_of_loops) begin 
+    while (loop < num_of_loops/3) begin 
         @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
         repeat (20) @(posedge pclk);
         @(posedge pclk) paddr<=32'h18; pwrite<=1'b0;
@@ -126,6 +126,42 @@ initial begin
         loop++;
     end
 
+    //loop to read data
+    while (loop < 2*num_of_loops/3) begin 
+        //@(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
+        //repeat (20) @(posedge pclk);
+        @(posedge pclk) paddr<=32'h18; pwrite<=1'b0;
+        repeat (150) @(posedge sclk);
+        $display("\nloop no%0d\n",loop+1);
+        loop++;
+    end
+
+    OPtx.stop<=1'b1;OPtx.frame_size <= f16bits; OPrx.frame_size <= f16bits; OPtx.sample_rate <= hz48; OPrx.sample_rate <= hz48;
+    @(posedge pclk) pwrite<=1'b1; paddr<=32'h0; pwdata<=OPtx;
+    @(posedge pclk); pwrite<=1'b1; paddr<=32'h10; pwdata<=OPrx;
+
+    OPtx.rst <= 1'b0; OPrx.rst <= 1'b0; 
+    //parsing control bits
+    @(posedge pclk); pwrite<=1'b1; paddr<=32'h00; pwdata<=OPtx;
+    @(posedge pclk); pwrite<=1'b1; paddr<=32'h10; pwdata<=OPrx;
+    
+    OPtx.rst <= 1'b1; OPrx.rst <= 1'b1;
+    //parsing control bits
+    @(posedge pclk); pwrite<=1'b1; paddr<=32'h00; pwdata<=OPtx;
+    @(posedge pclk); pwrite<=1'b1; paddr<=32'h10; pwdata<=OPrx;
+
+    OPtx.stop<=1'b0;
+    @(posedge pclk) pwrite<=1'b1; paddr<=32'h0; pwdata<=OPtx;
+
+    //loop to read data
+    while (loop < num_of_loops) begin 
+        @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
+        repeat (20) @(posedge pclk);
+        @(posedge pclk) paddr<=32'h18; pwrite<=1'b0;
+        repeat (120) @(posedge sclk);
+        $display("\nloop no%0d\n",loop+1);
+        loop++;
+    end
 
     //end of transmission
     OPtx.stop<=1'b1;

@@ -15,6 +15,7 @@ module I2S_top #(parameter ADR_OFFSET = 0)(
 
 
 OP_t OP;
+FL_t FL;
 logic Tx_wen, Tx_ren, Rx_ren, Rx_wen, reg_wen, reg_ren;
 logic Tx_full, Tx_empty, Rx_full, Rx_empty;
 logic [31:0] Tx_data, Rx_data;
@@ -25,9 +26,10 @@ logic del_Tx_ren, del_Rx_wen; //delayed enables
 
 assign addr = paddr - ADR_OFFSET; 
 
-assign flags = {
+assign FL = {
     Uwsc.ws_state == IDLE, //Inteface idle / standing by
-    (OP.mode inside {MT, ST}) ? Utx.radr%2 : Urx.wadr%2, //Channel being transmitted 
+    (!OP.stereo) ? 1'b0 : 
+        (OP.mode inside {MT, ST}) ? Utx.radr%2 : Urx.wadr%2, //Channel being transmitted 
     Tx_full, //full
     Tx_empty, //empty
     Utx.Al_full, //Almost full
@@ -38,6 +40,7 @@ assign flags = {
     Urx.Al_empty //Almost empty
 };
 
+assign flags = FL;
 assign OP = controls;
 
 //tri-state buffers for inout ports

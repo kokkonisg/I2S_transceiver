@@ -7,6 +7,7 @@ module tb_I2S_top;
 logic pclk, penable, pwrite;
 logic preset, temp_sclk;
 logic [31:0] paddr, pwdata, prdata;
+FL_t flags;
 wire sclk, mclk, ws, sd;
 OP_t OPtx ='{default: 0, standard: MSB, mode: ST, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
 OP_t OPrx ='{default: 0, standard: MSB, mode: MR, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
@@ -125,6 +126,8 @@ initial begin
         $display("\nloop no%0d\n",loop+1);
         loop++;
     end
+
+    @(posedge pclk); penable<=1'b1; pwrite<=1'b0; paddr<=32'h32; flags<=prdata;
 
     //loop to read data
     while (loop < 2*num_of_loops/3) begin 

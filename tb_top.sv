@@ -15,7 +15,7 @@ OP_t OPmstr = '{default: 0, standard: MSB, mode: MT, word_size: w32bits, frame_s
 
 //Two of the same modules used, one is transmitting data while the other recieves it
 I2S_top #(.ADR_OFFSET(0)) Utr(.*, .prdata());
-I2S_top #(.ADR_OFFSET(32'h10)) Urc(.*);
+I2S_top #(.ADR_OFFSET(32'h20)) Urc(.*);
 
 assign sclk = temp_sclk; //keeps sclk from being undefined at start
 localparam CLK_PERIOD = 6;
@@ -57,7 +57,7 @@ always @(negedge pclk) begin
         end
     end
 
-    if ($past(Urc.Uregc.reg_ren && paddr==32'h18)) begin
+    if ($past(Urc.Uregc.reg_ren && paddr==32'h28)) begin
         OUTPUT_DATA.push_front(prdata);
     end
 end
@@ -102,7 +102,7 @@ initial begin
 
     //parsing control bits
     @(posedge pclk); penable<=1'b1; pwrite<=1'b1; paddr<=32'h00; pwdata<=OPtx;
-    @(posedge pclk); penable<=1'b1; pwrite<=1'b1; paddr<=32'h10; pwdata<=OPrx;
+    @(posedge pclk); penable<=1'b1; pwrite<=1'b1; paddr<=32'h20; pwdata<=OPrx;
 
     //first load of data in TxFIFO
     @(posedge pclk) paddr<=32'h4; temp_sclk <= 1'bZ;
@@ -110,17 +110,17 @@ initial begin
 
     //starting data transmission
     OPrx.stop <= 1'b0;
-    @(posedge pclk); paddr<=32'h10; pwdata<=OPrx;
+    @(posedge pclk); paddr<=32'h20; pwdata<=OPrx;
     
     //reading data being recieved first
-    @(posedge pclk); paddr<=32'h18; pwrite<=1'b0;
+    @(posedge pclk); paddr<=32'h28; pwrite<=1'b0;
     repeat (38) @(posedge sclk)
 
     //loop to write & read data
     while (loop < num_of_loops/3) begin 
         @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
         repeat (20) @(posedge pclk);
-        @(posedge pclk) paddr<=32'h18; pwrite<=1'b0;
+        @(posedge pclk) paddr<=32'h28; pwrite<=1'b0;
         repeat (150) @(posedge sclk);
         $display("\nloop no%0d\n",loop+1);
         loop++;
@@ -128,9 +128,9 @@ initial begin
 
     //loop to read data
     while (loop < 2*num_of_loops/3) begin 
-        //@(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
+        @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
         repeat (20) @(posedge pclk);
-        @(posedge pclk) paddr<=32'h18; pwrite<=1'b0;
+        @(posedge pclk) paddr<=32'h28; pwrite<=1'b0;
         repeat (150) @(posedge sclk);
         $display("\nloop no%0d\n",loop+1);
         loop++;
@@ -138,30 +138,30 @@ initial begin
 
     // OPrx.stop<=1'b1;OPtx.frame_size <= f16bits; OPrx.frame_size <= f16bits; OPtx.sample_rate <= hz48; OPrx.sample_rate <= hz48;
     // @(posedge pclk) pwrite<=1'b1; paddr<=32'h0; pwdata<=OPtx;
-    // @(posedge pclk); pwrite<=1'b1; paddr<=32'h10; pwdata<=OPrx;
+    // @(posedge pclk); pwrite<=1'b1; paddr<=32'h20; pwdata<=OPrx;
 
     // OPtx.rst <= 1'b0; OPrx.rst <= 1'b0; 
     // //parsing control bits
     // @(posedge pclk); pwrite<=1'b1; paddr<=32'h00; pwdata<=OPtx;
-    // @(posedge pclk); pwrite<=1'b1; paddr<=32'h10; pwdata<=OPrx;
+    // @(posedge pclk); pwrite<=1'b1; paddr<=32'h20; pwdata<=OPrx;
     
     // OPtx.rst <= 1'b1; OPrx.rst <= 1'b1;
     // //parsing control bits
     // @(posedge pclk); pwrite<=1'b1; paddr<=32'h00; pwdata<=OPtx;
-    // @(posedge pclk); pwrite<=1'b1; paddr<=32'h10; pwdata<=OPrx;
+    // @(posedge pclk); pwrite<=1'b1; paddr<=32'h20; pwdata<=OPrx;
     
     // //first load of data in TxFIFO
     // @(posedge pclk) paddr<=32'h4;
     // repeat (15) @(posedge pclk); 
 
     // OPrx.stop<=1'b0;
-    // @(posedge pclk) pwrite<=1'b1; paddr<=32'h10; pwdata<=OPrx;
+    // @(posedge pclk) pwrite<=1'b1; paddr<=32'h20; pwdata<=OPrx;
 
     //loop to read data
     while (loop < num_of_loops) begin 
         @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
         repeat (20) @(posedge pclk);
-        @(posedge pclk) paddr<=32'h18; pwrite<=1'b0;
+        @(posedge pclk) paddr<=32'h28; pwrite<=1'b0;
         repeat (120) @(posedge sclk);
         $display("\nloop no%0d\n",loop+1);
         loop++;
@@ -169,11 +169,11 @@ initial begin
 
     //end of transmission
     OPrx.stop<=1'b1;
-    @(posedge pclk) pwrite<=1'b1; paddr<=32'h10; pwdata<=OPrx;
+    @(posedge pclk) pwrite<=1'b1; paddr<=32'h20; pwdata<=OPrx;
     $display("%0t NO MORE INPUT IN TxFIFO ENDING TRANSMISSION",$stime);
 
     //reading the last frame being transmitted 
-    @(posedge pclk) paddr<=32'h18;pwrite<=1'b0;
+    @(posedge pclk) paddr<=32'h28;pwrite<=1'b0;
     
     
 end

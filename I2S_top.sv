@@ -1,7 +1,7 @@
-`include "package.sv"
-`include "FIFOs.sv"
-`include "reg_interface.sv"
-`include "freq_divider.sv"
+//`include "C:/Users/G/Documents/University/I2S/I2S_transceiver/package.sv"
+`include "C:/Users/G/Documents/University/I2S/I2S_transceiver/FIFOs.sv"
+`include "C:/Users/G/Documents/University/I2S/I2S_transceiver/reg_interface.sv"
+`include "C:/Users/G/Documents/University/I2S/I2S_transceiver/freq_divider.sv"
 
 import ctrl_pkg::*;
 
@@ -63,7 +63,7 @@ reg_interface Ureg(
     .Rx_data(postprocess(Rx_data, OP)),
     .Tx_data,
     .controls,
-    .*
+    .flags
 );
 
 reg_control Uregc(

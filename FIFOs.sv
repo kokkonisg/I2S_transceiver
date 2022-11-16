@@ -9,10 +9,11 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     input logic wclk, rclk, rst_, wr_en, rd_en,
     logic [WIDTH-1:0] din,
     OP_t OP,
-    output logic dout, full, empty, Al_full, Al_empty);
+    output logic dout, full, empty);
 
     logic [WIDTH-1:0] FIFO [(1<<ADDR)-1:0];
     logic [ADDR-1:0] wadr, radr;
+    logic Al_full, Al_empty;
     int sptr;
     logic sdone;
     let maxp = (OP.frame_size==f16bits) ? 15 : 31;
@@ -130,10 +131,11 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
     input logic wclk, rclk, rst_, wr_en, rd_en,
     logic din,
     OP_t OP,
-    output logic [WIDTH-1:0] dout, logic full, empty, Al_full, Al_empty);
+    output logic [WIDTH-1:0] dout, logic full, empty);
 
     logic [WIDTH-1:0] FIFO [(1<<ADDR)-1:0];
     logic [ADDR-1:0] wadr, radr;
+    logic Al_full, Al_empty;
     int sptr;
     logic sdone;
     let maxp = (OP.frame_size==f16bits) ? 15 : 31;

@@ -16,7 +16,7 @@ module reg_interface (
 
     always_ff @(posedge pclk, negedge preset) begin
         if (!preset) begin
-            registers[0] <= 32'b001111011010101; //change reset values
+            registers[0] <= 32'b000011011010101; //change reset values
             registers[1] <= 32'b0;
         end else if (penable) begin 
             case (addr)

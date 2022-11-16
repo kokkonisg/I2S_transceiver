@@ -9,7 +9,7 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     input logic wclk, rclk, rst_, wr_en, rd_en,
     logic [WIDTH-1:0] din,
     OP_t OP,
-    output logic dout, full, empty);
+    output logic dout, full, empty, Al_full, Al_empty);
 
     logic [WIDTH-1:0] FIFO [(1<<ADDR)-1:0];
     logic [ADDR-1:0] wadr, radr;
@@ -30,16 +30,17 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     always_ff @(negedge rclk, negedge rst_) begin : proc_read
         if (!rd_en) begin
             sptr <= maxp;
-        end else if (rd_en && !empty /*&& !OP.stop*/) begin
+        end else if (rd_en /*&& !OP.stop*/) begin
             sptr <= (sptr>0) ? sptr-1 : maxp;
         end
     end
 
     //-----------Pointer Synchronizers-----------
     logic [ADDR:0] rbin,  wbin, rbinnext, wbinnext, rgray, wgray, rgraynext, wgraynext;
-    logic [ADDR:0] r2wsynch1, r2wsynch2;
+    logic [ADDR:0] r2wsynch1, r2wsynch2; 
     logic [ADDR:0] w2rsynch1, w2rsynch2;
-    
+    logic [ADDR:0] r2wsynch2_bin, w2rsynch2_bin;
+
     always_ff @(posedge wclk, negedge rst_) begin
         if (!rst_) begin
             {r2wsynch1, r2wsynch2} <= 0;
@@ -56,7 +57,7 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
         end    
     end
 
-    //------------Empty & Full logic-------------
+    //------------Empty logic-------------
     always_ff @(posedge rclk, negedge rst_) begin
         if (!rst_) begin
             {rbin, rgray} <= 0;
@@ -66,7 +67,7 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     end
 
     assign radr = rbin[ADDR-1:0];
-    assign rbinnext = rbin + (rd_en & sdone & ~empty);
+    assign rbinnext = rbin + (rd_en & sdone & !empty);
     assign rgraynext = (rbinnext>>1) ^ rbinnext;
 
     assign empty_val = (rgraynext == w2rsynch2);
@@ -77,8 +78,19 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
             empty <= empty_val; 
         end
     end 
+    
+    //------------Almost Empty logic-------------
+    gray2bin Ug0(.binary_out(w2rsynch2_bin), .gray_in(w2rsynch2));
+    assign Al_empty_val = (int'(3'(rbin[ADDR-1:0]+3'd4)) - int'(w2rsynch2_bin[ADDR-1:0]) < 4) && (int'(3'(rbin[ADDR-1:0]+3'd4)) - int'(w2rsynch2_bin[ADDR-1:0]) > 0);
+    always_ff @(posedge rclk, negedge rst_) begin
+        if (!rst_) begin 
+            Al_empty <= 1'b1;
+        end else begin 
+            Al_empty <= Al_empty_val | empty_val; 
+        end
+    end 
 
-
+    //------------Full logic-------------
     always_ff @(posedge wclk, negedge rst_) begin
         if (!rst_) begin 
             {wbin, wgray} <= 0;
@@ -99,13 +111,26 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
             full <= full_val; 
         end
     end 
+
+    //------------Almost Full logic-------------
+    gray2bin Ug1(.binary_out(r2wsynch2_bin), .gray_in(r2wsynch2));
+    assign Al_full_val = (int'(3'(wbin[ADDR-1:0]+3'd4)) - int'(r2wsynch2_bin[ADDR-1:0]) < 4) && (int'(3'(wbin[ADDR-1:0]+3'd4)) - int'(r2wsynch2_bin[ADDR-1:0]) > 0);
+    always_ff @(posedge wclk, negedge rst_) begin
+        if (!rst_) begin 
+            Al_full <= 1'b0;
+        end else begin 
+            Al_full <= Al_full_val | full_val; 
+        end
+    end 
+
 endmodule
+
 
 module RxFIFO #(WIDTH = 32, ADDR = 3) (
     input logic wclk, rclk, rst_, wr_en, rd_en,
     logic din,
     OP_t OP,
-    output logic [WIDTH-1:0] dout, logic full, empty);
+    output logic [WIDTH-1:0] dout, logic full, empty, Al_full, Al_empty);
 
     logic [WIDTH-1:0] FIFO [(1<<ADDR)-1:0];
     logic [ADDR-1:0] wadr, radr;
@@ -134,6 +159,7 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
     logic [ADDR:0] rbin,  wbin, rbinnext, wbinnext, rgray, wgray, rgraynext, wgraynext;
     logic [ADDR:0] r2wsynch1, r2wsynch2;
     logic [ADDR:0] w2rsynch1, w2rsynch2;
+    logic [ADDR:0] r2wsynch2_bin, w2rsynch2_bin;
     
     always_ff @(posedge wclk, negedge rst_) begin
         if (!rst_) begin 
@@ -151,7 +177,7 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
         end
     end
 
-    //------------Empty & Full logic-------------
+    //------------Empty logic-------------
     always_ff @(posedge rclk, negedge rst_) begin
         if (!rst_) begin 
             {rbin, rgray} <= 0;
@@ -173,7 +199,18 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
         end    
     end 
 
+    //------------Almost Empty logic-------------
+    gray2bin Ug0(.binary_out(w2rsynch2_bin), .gray_in(w2rsynch2));
+    assign Al_empty_val = (int'(3'(rbin[ADDR-1:0]+3'd4)) - int'(w2rsynch2_bin[ADDR-1:0]) < 4) && (int'(3'(rbin[ADDR-1:0]+3'd4)) - int'(w2rsynch2_bin[ADDR-1:0]) > 0);
+    always_ff @(posedge rclk, negedge rst_) begin
+        if (!rst_) begin 
+            Al_empty <= 1'b1;
+        end else begin 
+            Al_empty <= Al_empty_val | empty_val; 
+        end
+    end
 
+    //------------Full logic-------------
     always_ff @(posedge wclk, negedge rst_) begin
         if (!rst_) begin {wbin, wgray} <= 0;
         end else begin 
@@ -192,32 +229,129 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
         end else begin
             full <= full_val; 
         end
+    end  
+
+    //------------Almost Full logic-------------
+    gray2bin Ug1(.binary_out(r2wsynch2_bin), .gray_in(r2wsynch2));
+    assign Al_full_val = (int'(3'(wbin[ADDR-1:0]+3'd4)) - int'(r2wsynch2_bin[ADDR-1:0]) < 4) && (int'(3'(wbin[ADDR-1:0]+3'd4)) - int'(r2wsynch2_bin[ADDR-1:0]) > 0);
+    always_ff @(posedge wclk, negedge rst_) begin
+        if (!rst_) begin 
+            Al_full <= 1'b0;
+        end else begin 
+            Al_full <= Al_full_val | full_val; 
+        end
     end 
 endmodule
 
+module gray2bin #(
+      //=============
+      // Parameters
+      //=============
+      parameter DATA_WIDTH = 4
+   ) (
+      //============
+      // I/O Ports
+      //============
+      input  [DATA_WIDTH-1:0] gray_in,
+      output [DATA_WIDTH-1:0] binary_out
+   );
+   
+   // gen vars
+   genvar i;
+
+   //=====================
+   // Generate: gray2bin
+   //=====================
+   generate 
+      for (i=0; i<DATA_WIDTH; i=i+1)
+      begin
+         assign binary_out[i] = ^ gray_in[DATA_WIDTH-1:i];
+      end
+   endgenerate
+endmodule
 
 module f_tbench;
-    logic pclk, sclk, rst_, read, write, ws;
-    logic [31:0] din={$urandom,1'b1}; logic dout;
-    OP_t OP = '{default: 0, frame_size: f16bits};
+    logic pclk, sclk, rst_, read, write, ws, full, empty, Al_full, Al_empty;
+    logic [31:0] din; logic dout;
+    OP_t OP ='{default: 0, standard: MSB, mode: MT, word_size: w32bits, frame_size: f32bits, sys_freq: k32,stereo: 1'b1, stop: 1'b1, rst:1'b1};
+    
 
     initial begin
-        pclk<=0;
-        forever #2 pclk <= ~pclk;
+        pclk<=0;sclk<=0;
+        forever #2 pclk <= !pclk;
     end
+    initial 
+        forever #3 sclk <= !sclk;
 
-    clk_div div(.*,.N(6'h2));
-    TxFIFO fifo(.wclk(pclk),.rclk(sclk),.wr_en(write),.rd_en(read),.*);
-    // ws_gen wsg(.*,.clk(sclk));
-    // ws_tracker wst(.*,.clk(sclk),.ws_change(read));
+    RxFIFO fifo(.wclk(sclk),.rclk(pclk),.wr_en(write),.rd_en(read),.*);
+    
+
 
     always begin
         rst_ <= 1; {read, write} <= 0;
-        @(posedge pclk) rst_ <=0;
+        @(posedge pclk) rst_ <=0; din=$urandom($stime);
         @(posedge pclk) rst_<=1;
         @(posedge pclk) write<=1;
-        repeat (5) @(posedge pclk); write<=0;
-        @(posedge pclk) read<=1;
-        repeat (500) @(posedge pclk);
+        @(posedge pclk); write<=0;
+        repeat (20) @(posedge pclk);
+        @(posedge pclk) write<=1;
+        @(posedge pclk); write<=0;
+        repeat (20) @(posedge pclk);
+        @(posedge pclk) write<=1;
+        @(posedge pclk); write<=0;
+        repeat (20) @(posedge pclk);
+        @(posedge pclk) write<=1;
+        @(posedge pclk); write<=0;
+        repeat (20) @(posedge pclk);
+        @(posedge pclk) write<=1;
+        @(posedge pclk); write<=0;
+        repeat (20) @(posedge pclk);
+        @(posedge pclk) write<=1;
+        @(posedge pclk); write<=0;
+        repeat (20) @(posedge pclk);
+        @(posedge pclk) write<=1;
+        @(posedge pclk); write<=0;
+        repeat (20) @(posedge pclk);
+        @(posedge pclk) write<=1;
+        @(posedge pclk); write<=0;
+        repeat (40) @(posedge pclk);
+
+
+        @(posedge sclk) read<=1;
+        @(posedge sclk); read<=0;
+        repeat (20) @(posedge sclk);
+        @(posedge sclk) read<=1;
+        @(posedge sclk); read<=0;
+        repeat (20) @(posedge sclk);
+        @(posedge sclk) read<=1;
+        @(posedge sclk); read<=0;
+        repeat (20) @(posedge sclk);
+        @(posedge sclk) read<=1;
+        @(posedge sclk); read<=0;
+        repeat (20) @(posedge sclk);
+        @(posedge sclk) read<=1;
+        @(posedge sclk); read<=0;
+        repeat (20) @(posedge sclk);
+        @(posedge sclk) read<=1;
+        @(posedge sclk); read<=0;
+        repeat (20) @(posedge sclk);
+        @(posedge sclk) read<=1;
+        @(posedge sclk); read<=0;
+        repeat (20) @(posedge sclk);
+        @(posedge sclk) read<=1;
+        @(posedge sclk); read<=0;
+        repeat (20) @(posedge sclk);
+        @(posedge sclk) read<=1;
+        @(posedge sclk); read<=0;
+        repeat (20) @(posedge sclk);
+        @(posedge sclk) read<=1;
+        @(posedge sclk); read<=0;
+        repeat (20) @(posedge sclk);
+        @(posedge sclk) read<=1;
+        @(posedge sclk); read<=0;
+        repeat (20) @(posedge sclk);
+
+        repeat (140) @(posedge pclk);
     end
+
 endmodule

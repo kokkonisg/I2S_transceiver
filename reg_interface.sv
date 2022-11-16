@@ -3,14 +3,17 @@ module reg_interface (
     input logic pclk, preset, penable, pwrite, 
     // input logic [3:0] flags,
     input logic [31:0] addr, pwdata, Rx_data,
+    input logic [7:0] flags,
 
-    output logic [31:0] prdata, Tx_data, controls);
+    output logic [31:0] prdata, Tx_data,
+    output logic [14:0] controls);
 
-    logic [31:0] registers [3];
+    logic [31:0] registers [4];
 
-    assign controls = registers[0];
+    assign controls = registers[0][14:0];
     assign Tx_data = registers[1];
     assign registers[2] = Rx_data;
+    assign registers[3] = {24'b0, flags};
 
     always_ff @(posedge pclk, negedge preset) begin
         if (!preset) begin
@@ -19,9 +22,10 @@ module reg_interface (
         end else if (penable) begin 
             case (addr)
                 32'h0: if (pwrite) registers[0] <= pwdata; //write & read
-                        else if (!pwrite) prdata <= {/* flags,  */controls};
+                        else if (!pwrite) prdata <= registers[0];
                 32'h4: if (pwrite && reg_wen) registers[1] <= pwdata; //write only
                 32'h8: if (!pwrite && reg_ren) prdata <= registers[2]; //read only
+                32'h12: if (!pwrite) prdata <= registers[3]; //read only
             endcase
         end
     end

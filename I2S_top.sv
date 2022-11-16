@@ -18,14 +18,15 @@ OP_t OP;
 ws_state_t ws_gen_state;
 logic Tx_wen, Tx_ren, Rx_ren, Rx_wen, reg_wen, reg_ren;
 logic Tx_full, Tx_empty, Rx_full, Rx_empty;
-logic [31:0] Tx_data, Rx_data, controls;
+logic [31:0] Tx_data, Rx_data;
+logic [14:0] controls;
 logic [31:0] addr; 
 logic del_Tx_ren, del_Rx_wen; //delayed enables
-// logic [3:0] flags;
+logic [7:0] flags;
 
 assign addr = paddr - ADR_OFFSET; 
 
-// assign flags = {Tx_full, Tx_empty, Rx_full, Rx_empty};
+assign flags = {Tx_full, Tx_empty, Utx.Al_full, Utx.Al_empty, Rx_full, Rx_empty, Urx.Al_full, Urx.Al_empty};
 assign OP = controls;
 
 //tri-state buffers for inout ports
@@ -50,7 +51,8 @@ reg_interface Ureg(
     .reg_ren,
     .Rx_data(postprocess(Rx_data, OP)),
     .Tx_data,
-    .controls
+    .controls,
+    .flags
 );
 
 reg_control Uregc(

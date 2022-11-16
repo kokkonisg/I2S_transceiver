@@ -15,18 +15,29 @@ module I2S_top #(parameter ADR_OFFSET = 0)(
 
 
 OP_t OP;
-ws_state_t ws_gen_state;
 logic Tx_wen, Tx_ren, Rx_ren, Rx_wen, reg_wen, reg_ren;
 logic Tx_full, Tx_empty, Rx_full, Rx_empty;
 logic [31:0] Tx_data, Rx_data;
 logic [14:0] controls;
+logic [9:0] flags;
 logic [31:0] addr; 
 logic del_Tx_ren, del_Rx_wen; //delayed enables
-logic [7:0] flags;
 
 assign addr = paddr - ADR_OFFSET; 
 
-assign flags = {Tx_full, Tx_empty, Utx.Al_full, Utx.Al_empty, Rx_full, Rx_empty, Urx.Al_full, Urx.Al_empty};
+assign flags = {
+    Uwsc.ws_state == IDLE, //Inteface idle / standing by
+    (OP.mode inside {MT, ST}) ? Utx.radr%2 : Urx.wadr%2, //Channel being transmitted 
+    Tx_full, //full
+    Tx_empty, //empty
+    Utx.Al_full, //Almost full
+    Utx.Al_empty, //Almost empty
+    Rx_full, //full
+    Rx_empty, //empty
+    Urx.Al_full, //Almost full
+    Urx.Al_empty //Almost empty
+};
+
 assign OP = controls;
 
 //tri-state buffers for inout ports
@@ -52,7 +63,7 @@ reg_interface Ureg(
     .Rx_data(postprocess(Rx_data, OP)),
     .Tx_data,
     .controls,
-    .flags
+    .*
 );
 
 reg_control Uregc(
@@ -77,22 +88,24 @@ clk_div Udiv(
     .OP
 );
 
-ws_gen Uwsg (
-    .clk(sclk),
-    .rst_(preset & OP.rst),
-    .OP,
-    .ws(ws_gen),
-    .state(ws_gen_state),
-    .Tx_empty,
-    .Rx_full
-);
+// ws_gen Uwsg (
+//     .clk(sclk),
+//     .rst_(preset & OP.rst),
+//     .OP,
+//     .ws(ws_gen),
+//     .state(ws_gen_state),
+//     .Tx_empty,
+//     .Rx_full
+// );
 
 ws_control Uwsc (
     .sclk,
-    .preset(preset & OP.rst),
+    .rst_(preset & OP.rst),
     .ws,
+    .ws_gen,
     .OP,
-    .ws_gen_state,
+    .Tx_empty,
+    .Rx_full,
     .Tx_ren,
     .Rx_wen,
     .del_Tx_ren,

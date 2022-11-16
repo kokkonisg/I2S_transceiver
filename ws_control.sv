@@ -116,21 +116,37 @@ end
 endmodule
 
 module ws_control(
-    input logic sclk, preset, ws, 
-    OP_t OP, ws_state_t ws_gen_state,
-    output logic Tx_ren, Rx_wen, del_Tx_ren, del_Rx_wen
+    input logic sclk, rst_, ws, Tx_empty, Rx_full,
+    input OP_t OP,
+    output logic ws_gen, Tx_ren, Rx_wen, del_Tx_ren, del_Rx_wen
     );
 
-    ws_state_t ws_state, ws_tr_state;
-    ws_tracker Uwst(.clk(sclk), .rst_(preset), .OP, .ws, .state(ws_tr_state));
+    ws_state_t ws_state, ws_tr_state, ws_gen_state;
+    ws_tracker Uwst(
+        .clk(sclk),
+        .rst_,
+        .OP,
+        .ws,
+        .state(ws_tr_state)
+    );
+
+    ws_gen Uwsg (
+        .clk(sclk),
+        .rst_,
+        .OP,
+        .ws(ws_gen),
+        .state(ws_gen_state),
+        .Tx_empty,
+        .Rx_full
+    );
 
     //depending on the peripheral's mode, 
     //only one of the above modules needs to run
     assign ws_state = (OP.mode inside {MT, MR}) ? ws_gen_state : ws_tr_state;
 
     //dellayed enables are used for I2S Phillips standard which requires a 1 clok cycle dellay
-    always_ff @(negedge sclk or negedge preset) begin : proc_del_en
-        if (!preset) begin
+    always_ff @(negedge sclk or negedge rst_) begin : proc_del_en
+        if (!rst_) begin
             {del_Tx_ren, del_Rx_wen} <= 0;
         end else begin
             {del_Tx_ren, del_Rx_wen} <= {Tx_ren, Rx_wen};

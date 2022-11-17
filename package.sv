@@ -29,9 +29,10 @@ package ctrl_pkg;
 
     typedef struct packed {
         status_t TxReg_EMPTY;
-        status_t RxReg_EMPTY;
+        status_t RxReg_FULL;
         status_t IDLE;
-        channel_t CHAN;
+        channel_t TxCH;
+        channel_t RxCH;
         status_t TxFULL;
         status_t TxEMPTY;
         status_t TxAL_FULL;

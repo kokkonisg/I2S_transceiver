@@ -51,14 +51,14 @@ end
 
 int j = num_of_words-1;
 always @(negedge pclk) begin    
-    if (!Utr.Uregc.occTx && penable && pwrite && paddr==32'h4) begin
+    if (!Utr.Uregc.occTx && penable && pwrite && paddr==32'h8) begin
         pwdata<=INPUT_DATA[j];
         if (j >= 0) begin
             j <= j-1;
         end
     end
 
-    if ($past(Urc.Uregc.reg_ren && paddr==32'h28)) begin
+    if ($past(Urc.Uregc.reg_ren && paddr==32'h32)) begin
         OUTPUT_DATA.push_front(prdata);
     end
 end
@@ -106,7 +106,7 @@ initial begin
     @(posedge pclk); penable<=1'b1; pwrite<=1'b1; paddr<=32'h20; pwdata<=OPrx;
 
     //first load of data in TxFIFO
-    @(posedge pclk) paddr<=32'h4; temp_sclk <= 1'bZ;
+    @(posedge pclk) paddr<=32'h8; temp_sclk <= 1'bZ;
     repeat (15) @(posedge pclk); 
 
     //starting data transmission
@@ -114,26 +114,26 @@ initial begin
     @(posedge pclk); paddr<=32'h20; pwdata<=OPrx;
     
     //reading data being recieved first
-    @(posedge pclk); paddr<=32'h28; pwrite<=1'b0;
+    @(posedge pclk); paddr<=32'h32; pwrite<=1'b0;
     repeat (38) @(posedge sclk)
 
     //loop to write & read data
     while (loop < num_of_loops/3) begin 
         @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
         repeat (20) @(posedge pclk);
-        @(posedge pclk) paddr<=32'h28; pwrite<=1'b0;
+        @(posedge pclk) paddr<=32'h32; pwrite<=1'b0;
         repeat (150) @(posedge sclk);
         $display("\nloop no%0d\n",loop+1);
         loop++;
     end
 
-    @(posedge pclk); penable<=1'b1; pwrite<=1'b0; paddr<=32'h32; flags<=prdata;
+    @(posedge pclk); penable<=1'b1; pwrite<=1'b0; paddr<=32'h24; flags<=prdata;
 
     //loop to read data
     while (loop < 2*num_of_loops/3) begin 
         @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
         repeat (20) @(posedge pclk);
-        @(posedge pclk) paddr<=32'h28; pwrite<=1'b0;
+        @(posedge pclk) paddr<=32'h32; pwrite<=1'b0;
         repeat (150) @(posedge sclk);
         $display("\nloop no%0d\n",loop+1);
         loop++;
@@ -154,7 +154,7 @@ initial begin
     // @(posedge pclk); pwrite<=1'b1; paddr<=32'h20; pwdata<=OPrx;
     
     // //first load of data in TxFIFO
-    // @(posedge pclk) paddr<=32'h4;
+    // @(posedge pclk) paddr<=32'h8;
     // repeat (15) @(posedge pclk); 
 
     // OPrx.stop<=1'b0;
@@ -164,7 +164,7 @@ initial begin
     while (loop < num_of_loops) begin 
         @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
         repeat (20) @(posedge pclk);
-        @(posedge pclk) paddr<=32'h28; pwrite<=1'b0;
+        @(posedge pclk) paddr<=32'h32; pwrite<=1'b0;
         repeat (120) @(posedge sclk);
         $display("\nloop no%0d\n",loop+1);
         loop++;
@@ -176,7 +176,7 @@ initial begin
     $display("%0t NO MORE INPUT IN TxFIFO ENDING TRANSMISSION",$stime);
 
     //reading the last frame being transmitted 
-    @(posedge pclk) paddr<=32'h28;pwrite<=1'b0;
+    @(posedge pclk) paddr<=32'h32;pwrite<=1'b0;
     
     
 end

@@ -151,12 +151,8 @@ module RxFIFO #(WIDTH = 32, ADDR = 3) (
         end
     end
 
-    always_ff @(posedge rclk) begin : proc_read
-        if (rd_en && !empty) begin
-            dout <= FIFO[radr];
-        end
-    end
-
+    assign dout = FIFO[radr];
+    
     //-----------Pointer Synchronizers-----------
     logic [ADDR:0] rbin,  wbin, rbinnext, wbinnext, rgray, wgray, rgraynext, wgraynext;
     logic [ADDR:0] r2wsynch1, r2wsynch2;

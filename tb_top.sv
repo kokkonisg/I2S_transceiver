@@ -51,7 +51,7 @@ end
 
 int j = num_of_words-1;
 always @(negedge pclk) begin    
-    if (!Utr.Uregc.occTx && penable && pwrite && paddr==32'h8) begin
+    if (!Utr.Uregc.occTx && penable && pwrite && paddr==32'h08) begin
         pwdata<=INPUT_DATA[j];
         if (j >= 0) begin
             j <= j-1;
@@ -106,7 +106,7 @@ initial begin
     @(posedge pclk); penable<=1'b1; pwrite<=1'b1; paddr<=32'h20; pwdata<=OPrx;
 
     //first load of data in TxFIFO
-    @(posedge pclk) paddr<=32'h8; temp_sclk <= 1'bZ;
+    @(posedge pclk) paddr<=32'h08; temp_sclk <= 1'bZ;
     repeat (15) @(posedge pclk); 
 
     //starting data transmission
@@ -119,7 +119,7 @@ initial begin
 
     //loop to write & read data
     while (loop < num_of_loops/3) begin 
-        @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
+        @(posedge pclk) paddr<=32'h08; pwrite<=1'b1;
         repeat (20) @(posedge pclk);
         @(posedge pclk) paddr<=32'h32; pwrite<=1'b0;
         repeat (150) @(posedge sclk);
@@ -131,7 +131,7 @@ initial begin
 
     //loop to read data
     while (loop < 2*num_of_loops/3) begin 
-        @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
+        @(posedge pclk) paddr<=32'h08; pwrite<=1'b1;
         repeat (20) @(posedge pclk);
         @(posedge pclk) paddr<=32'h32; pwrite<=1'b0;
         repeat (150) @(posedge sclk);
@@ -154,7 +154,7 @@ initial begin
     // @(posedge pclk); pwrite<=1'b1; paddr<=32'h20; pwdata<=OPrx;
     
     // //first load of data in TxFIFO
-    // @(posedge pclk) paddr<=32'h8;
+    // @(posedge pclk) paddr<=32'h08;
     // repeat (15) @(posedge pclk); 
 
     // OPrx.stop<=1'b0;
@@ -162,7 +162,7 @@ initial begin
 
     //loop to read data
     while (loop < num_of_loops) begin 
-        @(posedge pclk) paddr<=32'h04; pwrite<=1'b1;
+        @(posedge pclk) paddr<=32'h08; pwrite<=1'b1;
         repeat (20) @(posedge pclk);
         @(posedge pclk) paddr<=32'h32; pwrite<=1'b0;
         repeat (120) @(posedge sclk);

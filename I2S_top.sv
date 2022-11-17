@@ -67,6 +67,8 @@ reg_interface Ureg(
     .prdata,
     .reg_wen,
     .reg_ren,
+    .Tx_wen,
+    .Rx_ren,
     .Rx_data(postprocess(Rx_data, OP)),
     .Tx_data,
     .controls,

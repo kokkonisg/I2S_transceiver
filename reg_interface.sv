@@ -12,18 +12,17 @@ module reg_interface (
     assign controls = registers[0][14:0];
     assign registers[1] = {19'b0, flags};
     assign Tx_data = registers[2];
-    assign registers[3] = Rx_data;
 
     always_ff @(posedge pclk, negedge preset) begin
         if (!preset) begin
             registers[0] <= 32'b000011011010101; //change reset values
             //registers[1] contains flags so on reset, the reset values of the contained vars are set 
             registers[2] <= 32'b0;
-            //registers[3] <= 32'b0;
-        end else if (penable) begin 
-            // if (Rx_ren) begin
-            //     registers[3] = Rx_data;
-            // end 
+            registers[3] <= 32'b0;
+        end else if (penable) begin
+            if (Rx_ren) begin
+                registers[3] <= Rx_data;
+            end
             case (addr)
                 32'h0: if (pwrite) registers[0] <= pwdata; //write & read
                         else if (!pwrite) prdata <= registers[0];

@@ -2,7 +2,7 @@ module reg_interface (
     input logic reg_wen, reg_ren,
     input logic pclk, preset, penable, pwrite,
     input logic [31:0] addr, pwdata, Rx_data,
-    logic [9:0] flags,
+    logic [11:0] flags,
 
     output logic [31:0] prdata, Tx_data,
     output logic [14:0] controls);
@@ -12,7 +12,7 @@ module reg_interface (
     assign controls = registers[0][14:0];
     assign Tx_data = registers[1];
     assign registers[2] = Rx_data;
-    assign registers[3] = {22'b0, flags};
+    assign registers[3] = {20'b0, flags};
 
     always_ff @(posedge pclk, negedge preset) begin
         if (!preset) begin

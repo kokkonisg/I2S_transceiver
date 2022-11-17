@@ -28,6 +28,8 @@ package ctrl_pkg;
     } OP_t; OP_t OP;
 
     typedef struct packed {
+        status_t TxReg_EMPTY;
+        status_t RxReg_EMPTY;
         status_t IDLE;
         channel_t CHAN;
         status_t TxFULL;

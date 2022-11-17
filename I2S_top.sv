@@ -20,14 +20,16 @@ logic Tx_wen, Tx_ren, Rx_ren, Rx_wen, reg_wen, reg_ren;
 logic Tx_full, Tx_empty, Rx_full, Rx_empty;
 logic [31:0] Tx_data, Rx_data;
 logic [14:0] controls;
-logic [9:0] flags;
+logic [11:0] flags;
 logic [31:0] addr; 
 logic del_Tx_ren, del_Rx_wen; //delayed enables
 
 assign addr = paddr - ADR_OFFSET; 
 
 assign FL = {
-    Uwsc.ws_state == IDLE, //Inteface idle / standing by
+    !Uregc.occTx, // Transmitter Data Register Empty
+    !Uregc.occRx, // Receiver Data Register Empty
+    Uwsc.ws_state == IDLE, //Inteface idle/standing by
     (!OP.stereo) ? 1'b0 : 
         (OP.mode inside {MT, ST}) ? Utx.radr%2 : Urx.wadr%2, //Channel being transmitted 
     Tx_full, //full

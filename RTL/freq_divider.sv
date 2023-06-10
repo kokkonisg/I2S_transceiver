@@ -1,6 +1,3 @@
-`include "package.sv"
-import ctrl_pkg::*;
-
 // module clk_tbench;
 // 	logic pclk, rst_, sclk, mclk;
 // 	OP_t OP = '{default: 0, mclk_en: 1'b1, mode: MT, stereo:1'b1};

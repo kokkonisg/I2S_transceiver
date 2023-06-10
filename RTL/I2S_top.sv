@@ -1,8 +1,3 @@
-//`include "C:/Users/G/Documents/University/I2S/I2S_transceiver/package.sv"
-`include "C:/Users/G/Documents/University/I2S/I2S_transceiver/FIFOs.sv"
-`include "C:/Users/G/Documents/University/I2S/I2S_transceiver/reg_interface.sv"
-`include "C:/Users/G/Documents/University/I2S/I2S_transceiver/freq_divider.sv"
-
 import ctrl_pkg::*;
 
 module I2S_top #(parameter ADR_OFFSET = 0)(
@@ -11,7 +6,8 @@ module I2S_top #(parameter ADR_OFFSET = 0)(
     output logic mclk,
     output logic [31:0] prdata,
     
-    inout sclk, ws, sd); 
+    inout sclk, ws, sd
+); 
 
 
 OP_t OP;

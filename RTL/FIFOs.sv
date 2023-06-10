@@ -1,7 +1,3 @@
-`include "package.sv"
-
-import ctrl_pkg::*;
-
 //Heavily based on the design shown on Cliff Cummings' paper
 //"Simulation and Synthesis Techniques for Asynchronous FIFO Design", 2005
 

@@ -5,11 +5,11 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
     input logic wclk, rclk, rst_, wr_en, rd_en,
     logic [WIDTH-1:0] din,
     OP_t OP,
-    output logic dout, full, empty);
+    output logic dout, full, empty, Al_full, Al_empty
+    );
 
     logic [WIDTH-1:0] FIFO [(1<<ADDR)-1:0];
     logic [ADDR-1:0] wadr, radr;
-    logic Al_full, Al_empty;
     int sptr;
     logic sdone;
     let maxp = (OP.frame_size==f16bits) ? 15 : 31;
@@ -24,7 +24,7 @@ module TxFIFO #(WIDTH = 32, ADDR = 3) (
 
     assign dout = (OP.mute /*|| OP.stop*/) ? 1'b0 : FIFO[radr][sptr];
 
-    always_ff @(negedge rclk, negedge rst_) begin : proc_read
+    always_ff @(negedge rclk/* , negedge rst_ */) begin : proc_read
         if (!rd_en) begin
             sptr <= maxp;
         end else if (rd_en /*&& !OP.stop*/) begin
@@ -125,13 +125,14 @@ endmodule
 
 module RxFIFO #(WIDTH = 32, ADDR = 3) (
     input logic wclk, rclk, rst_, wr_en, rd_en,
-    logic din,
-    OP_t OP,
-    output logic [WIDTH-1:0] dout, logic full, empty);
+    input logic din,
+    input OP_t OP,
+    output logic [WIDTH-1:0] dout, 
+    output logic full, empty, Al_full, Al_empty
+    );
 
     logic [WIDTH-1:0] FIFO [(1<<ADDR)-1:0];
     logic [ADDR-1:0] wadr, radr;
-    logic Al_full, Al_empty;
     int sptr;
     logic sdone;
     let maxp = (OP.frame_size==f16bits) ? 15 : 31;
@@ -264,7 +265,7 @@ module gray2bin #(
    endgenerate
 endmodule
 
-module f_tbench;
+/* module f_tbench;
     logic pclk, sclk, rst_, read, write, ws, full, empty, Al_full, Al_empty;
     logic [31:0] din; logic dout;
     OP_t OP ='{default: 0, standard: MSB, mode: MT, word_size: w32bits, frame_size: f32bits, sys_freq: k32,stereo: 1'b1, stop: 1'b1, rst:1'b1};
@@ -347,5 +348,4 @@ module f_tbench;
 
         repeat (140) @(posedge pclk);
     end
-
-endmodule
+endmodule */

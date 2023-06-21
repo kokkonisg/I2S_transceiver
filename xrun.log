@@ -1,0 +1,131 @@
+xrun(64): 22.03-s005: (c) Copyright 1995-2022 Cadence Design Systems, Inc.
+TOOL:	xrun(64)	22.03-s005: Started on Jun 21, 2023 at 17:29:44 EEST
+xrun
+	tb_top.sv
+	-f filelist.f
+		RTL/package.sv
+		RTL/I2S_top.sv
+		RTL/FIFOs.sv
+		RTL/freq_divider.sv
+		RTL/reg_interface.sv
+		RTL/reg_control.sv
+		RTL/ws_control.sv
+		RTL/ws_gen.sv
+		RTL/ws_tracker.sv
+	-access +wrc
+	-gui
+	-s
+Recompiling... reason: file './tb_top.sv' is newer than expected.
+	expected: Wed Jun 21 17:28:38 2023
+	actual:   Wed Jun 21 17:29:35 2023
+file: tb_top.sv
+	module worklib.tb_I2S_top:sv
+		errors: 0, warnings: 0
+file: RTL/package.sv
+	package worklib.ctrl_pkg:sv
+		errors: 0, warnings: 0
+file: RTL/I2S_top.sv
+	module worklib.I2S_top:sv
+		errors: 0, warnings: 0
+file: RTL/FIFOs.sv
+	module worklib.TxFIFO:sv
+		errors: 0, warnings: 0
+	module worklib.RxFIFO:sv
+		errors: 0, warnings: 0
+	module worklib.gray2bin:sv
+		errors: 0, warnings: 0
+file: RTL/freq_divider.sv
+	module worklib.clk_div:sv
+		errors: 0, warnings: 0
+	module worklib.div_calc:sv
+		errors: 0, warnings: 0
+file: RTL/reg_interface.sv
+	module worklib.reg_interface:sv
+		errors: 0, warnings: 0
+file: RTL/reg_control.sv
+	module worklib.reg_control:sv
+		errors: 0, warnings: 0
+file: RTL/ws_control.sv
+	module worklib.ws_control:sv
+		errors: 0, warnings: 0
+file: RTL/ws_gen.sv
+	module worklib.ws_gen:sv
+		errors: 0, warnings: 0
+file: RTL/ws_tracker.sv
+	module worklib.ws_tracker:sv
+		errors: 0, warnings: 0
+		Caching library 'worklib' ....... Done
+	Elaborating the design hierarchy:
+	Top level design units:
+		ctrl_pkg
+		$unit_0x73508f5d
+		tb_I2S_top
+xmelab: *W,DSEMEL: This SystemVerilog design will be simulated as per IEEE 1800-2009 SystemVerilog simulation semantics. Use -disable_sem2009 option for turning off SV 2009 simulation semantics.
+	Building instance overlay tables: .................... Done
+	Generating native compiled code:
+		worklib.I2S_top:sv <0x025e4e6d>
+			streams:  49, words: 21437
+		worklib.reg_interface:sv <0x66a8879c>
+			streams:  11, words:  3791
+		worklib.ws_gen:sv <0x52a5fd4c>
+			streams:   7, words:  5096
+		worklib.ws_tracker:sv <0x5f6fa7eb>
+			streams:   7, words:  4486
+		worklib.div_calc:sv <0x6410ba9f>
+			streams:   1, words:  6511
+		worklib.clk_div:sv <0x4cc58ad1>
+			streams:  26, words: 10837
+		worklib.I2S_top:sv <0x0edf4915>
+			streams:  49, words: 21371
+		worklib.gray2bin:sv <0x03df642c>
+			streams:   4, words:   778
+		worklib.ws_control:sv <0x69fb6e8f>
+			streams:   8, words:  4281
+		worklib.TxFIFO:sv <0x4ba3c02e>
+			streams:  38, words: 13099
+		worklib.RxFIFO:sv <0x3346b825>
+			streams:  37, words: 13039
+		worklib.tb_I2S_top:sv <0x26938163>
+			streams:  37, words: 33696
+		worklib.reg_control:sv <0x4079ec48>
+			streams:  10, words:  5335
+		worklib.reg_control:sv <0x1ce50961>
+			streams:  10, words:  4791
+	Building instance specific data structures.
+	Loading native compiled code:     .................... Done
+	Design hierarchy summary:
+		               Instances  Unique
+		Modules:              29      12
+		Verilog packages:      1       1
+		Registers:           307     169
+		Scalar wires:        215       -
+		Expanded wires:       32       8
+		Vectored wires:      102       -
+		Always blocks:        83      45
+		Initial blocks:        8       8
+		Cont. assignments:   114      45
+		Pseudo assignments:  115     101
+		Compilation units:     1       1
+	Writing initial simulation snapshot: worklib.tb_I2S_top:sv
+xmsim: *W,NOMTDGUI: Multi-Threaded Dumping is disabled for interactive debug mode.
+SVSEED default: 1
+xmsim: *W,DSEM2009: This SystemVerilog design is simulated as per IEEE 1800-2009 SystemVerilog simulation semantics. Use -disable_sem2009 option for turning off SV 2009 simulation semantics.
+
+-------------------------------------
+Relinquished control to SimVision...
+xcelium> 
+xcelium> source /mnt/apps/prebuilt/EDA/cadence/2022-23/RHELx86/XCELIUM/tools/xcelium/files/xmsimrc
+xcelium> # Restoring simulation environment...
+xcelium> input -quiet .reinvoke.sim
+xcelium> file delete .reinvoke.sim
+xcelium> run 100
+Ran until 100 NS + 0
+xcelium> run 100
+Ran until 200 NS + 0
+xcelium> run 100
+Ran until 300 NS + 0
+xcelium> run 100
+Ran until 400 NS + 0
+xcelium> run 100
+Ran until 500 NS + 0
+xcelium> 

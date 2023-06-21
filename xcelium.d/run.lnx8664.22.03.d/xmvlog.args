@@ -1,0 +1,26 @@
+//
+// File created by:  xrun
+// Do not modify this file
+//
+-XLMODE
+./xcelium.d/run.lnx8664.22.03.d
+-RUNMODE
+tb_top.sv
+RTL/package.sv
+RTL/I2S_top.sv
+RTL/FIFOs.sv
+RTL/freq_divider.sv
+RTL/reg_interface.sv
+RTL/reg_control.sv
+RTL/ws_control.sv
+RTL/ws_gen.sv
+RTL/ws_tracker.sv
+-CDSLIB
+./xcelium.d/run.lnx8664.22.03.d/cdsrun.lib
+-HDLVAR
+./xcelium.d/run.lnx8664.22.03.d/hdlrun.var
+-MESSAGES
+-UPDATE
+-XLLIBSTORE
+./xcelium.d/run.lnx8664.22.03.d/xllibs
+-ALLOWUNBOUND

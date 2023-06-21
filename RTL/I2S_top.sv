@@ -19,26 +19,9 @@ logic [14:0] controls;
 logic [12:0] flags;
 logic [31:0] addr; 
 logic del_Tx_ren, del_Rx_wen; //delayed enables
+logic Utx_Al_full, Utx_Al_empty, Urx_Al_full, Urx_Al_empty;
 
 assign addr = paddr - ADR_OFFSET; 
-
-assign FL = {
-    !Uregc.occTx, // Transmitter Data Register Empty
-    Uregc.occRx, // Receiver Data Register Empty
-    Uwsc.ws_state == IDLE, //Inteface idle/standing by
-    (!OP.stereo) ? 1'b0 : //Channel to which data to be inserted in Tx data reg correspond 
-        ~(Utx.wadr%2),  
-    (!OP.stereo) ? 1'b0 : //Channel to which data to be obtained from Rx data reg correspond
-        ~(Urx.radr%2),  
-    Tx_full, //full
-    Tx_empty, //empty
-    Utx.Al_full, //Almost full
-    Utx.Al_empty, //Almost empty
-    Rx_full, //full
-    Rx_empty, //empty
-    Urx.Al_full, //Almost full
-    Urx.Al_empty //Almost empty
-};
 
 assign flags = FL;
 assign OP = controls;
@@ -51,39 +34,10 @@ assign ws = (OP.mode inside {MT,MR}) ? ws_gen : 1'bZ;
 
 assign sclk = (OP.mode inside {MT,MR}) ? sclk_gen : 1'bZ;
 
+//---------------------
+//module instantiations
+//---------------------
 
-//module definitions
-reg_interface Ureg(
-    .pclk,
-    .preset,
-    .penable,
-    .pwrite,
-    .addr,
-    .pwdata,
-    .prdata,
-    .reg_wen,
-    .reg_ren,
-    .Tx_wen,
-    .Rx_ren,
-    .Rx_data(postprocess(Rx_data, OP)),
-    .Tx_data,
-    .controls,
-    .flags
-);
-
-reg_control Uregc(
-    .pclk,
-    .penable,
-    .preset,
-    .pwrite,
-    .addr,
-    .Rx_empty,
-    .Tx_full,
-    .Tx_wen,
-    .Rx_ren,
-    .reg_wen,
-    .reg_ren
-);
 
 clk_div Udiv(
     .sclk(sclk_gen),
@@ -127,9 +81,10 @@ TxFIFO Utx(
     .din(preprocess(Tx_data, OP)),
     .dout(sd_gen),
     .full(Tx_full),
-    .empty(Tx_empty)
+    .empty(Tx_empty),
+    .Al_full(Utx_Al_full),
+    .Al_empty(Utx_Al_empty)
 );
-
 RxFIFO Urx(
     .rclk(pclk),
     .wclk(sclk),
@@ -140,9 +95,61 @@ RxFIFO Urx(
     .dout(Rx_data),
     .din(sd),
     .full(Rx_full),
-    .empty(Rx_empty)
+    .empty(Rx_empty),
+    .Al_full(Urx_Al_full),
+    .Al_empty(Urx_Al_empty) 
 );
-endmodule
+
+reg_control Uregc(
+    .pclk,
+    .penable,
+    .preset,
+    .pwrite,
+    .addr,
+    .Rx_empty,
+    .Tx_full,
+    .Tx_wen,
+    .Rx_ren,
+    .reg_wen,
+    .reg_ren
+);
+
+reg_interface Ureg(
+    .pclk,
+    .preset,
+    .penable,
+    .pwrite,
+    .addr,
+    .pwdata,
+    .prdata,
+    .reg_wen,
+    .reg_ren,
+    .Tx_wen,
+    .Rx_ren,
+    .Rx_data(postprocess(Rx_data, OP)),
+    .Tx_data,
+    .controls,
+    .flags
+);
+
+assign FL = {
+    !Uregc.occTx, // Transmitter Data Register Empty
+    Uregc.occRx, // Receiver Data Register Empty
+    Uwsc.ws_state == IDLE, //Inteface idle/standing by
+    (!OP.stereo) ? 1'b0 : //Channel to which data to be inserted in Tx data reg correspond 
+        ~(Utx.wadr%2),  
+    (!OP.stereo) ? 1'b0 : //Channel to which data to be obtained from Rx data reg correspond
+        ~(Urx.radr%2),  
+    Tx_full, //full
+    Tx_empty, //empty
+    Utx_Al_full, //Almost full
+    Utx_Al_empty, //Almost empty
+    Rx_full, //full
+    Rx_empty, //empty
+    Urx_Al_full, //Almost full
+    Urx_Al_empty //Almost empty
+};
+
 
 //a function that transforms the input data from PCM encoder to the desired format 
 //(ex. a word encoded in 16bits -> 32bit frame with LSB standard, meaning zero-fill 16 MSBs)
@@ -202,3 +209,5 @@ function logic [31:0] postprocess;
 
     postprocess = dout;
 endfunction
+
+endmodule

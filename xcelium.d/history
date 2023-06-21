@@ -1,0 +1,18 @@
+//
+// File created by:  xrun
+// Do not modify this file
+
+s1::(21Jun2023:17:02:46):( xrun tb_top.sv -f filelist.f )
+s2::(21Jun2023:17:04:09):( xrun tb_top.sv -f filelist.f )
+s3::(21Jun2023:17:04:40):( xrun tb_top.sv -f filelist.f )
+s4::(21Jun2023:17:05:13):( xrun tb_top.sv -f filelist.f )
+s5::(21Jun2023:17:05:40):( xrun tb_top.sv -f filelist.f )
+s6::(21Jun2023:17:05:50):( xrun tb_top.sv -f filelist.f )
+s7::(21Jun2023:17:06:51):( xrun tb_top.sv -f filelist.f -access +wrc )
+s8::(21Jun2023:17:06:58):( xrun tb_top.sv -f filelist.f -access +wrc -gui )
+s9::(21Jun2023:17:07:35):( xrun tb_top.sv -f filelist.f -access +wrc -gui "-s " )
+s10::(21Jun2023:17:13:56):( xrun tb_top.sv -f filelist.f -access +wrc -gui -s )
+s11::(21Jun2023:17:17:15):( xrun tb_top.sv -f filelist.f -access +wrc -gui -s )
+s12::(21Jun2023:17:26:13):( xrun tb_top.sv -f filelist.f -access +wrc -gui -s )
+s13::(21Jun2023:17:28:45):( xrun tb_top.sv -f filelist.f -access +wrc -gui -s )
+s14::(21Jun2023:17:29:45):( xrun tb_top.sv -f filelist.f -access +wrc -gui -s )

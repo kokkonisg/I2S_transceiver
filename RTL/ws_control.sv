@@ -44,7 +44,7 @@ module ws_control(
                 MT, ST: Tx_ren = 1'b1;
                 MR, SR: Rx_wen = 1'b1;
             endcase
-        end else if (ws_state == IDLE) begin
+        end else begin //ws state = IDLE
             {Tx_ren, Rx_wen} = 2'b0;
         end
     end

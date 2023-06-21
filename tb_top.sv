@@ -1,17 +1,43 @@
-`include "I2S_top.sv"
 `default_nettype none
 
-import ctrl_pkg::*;
-
 module tb_I2S_top;
+
+    typedef enum logic {hz44=1'b0, hz48=1'b1} sample_rate_t;
+    typedef enum logic [1:0] {w16bits=2'b00, w24bits=2'b01, w32bits=2'b10} word_size_t;
+    typedef enum logic {f16bits=1'b0, f32bits=1'b1} frame_size_t;
+    typedef enum logic [1:0] {I2S=2'b00, MSB=2'b01, LSB=2'b10} standard_t;
+    typedef enum logic [1:0] {SR=2'b00, MR=2'b10, ST=2'b01, MT=2'b11} mode_t;  
+    typedef enum logic [1:0] {k32=2'b00, k16=2'b01, k8=2'b10} sys_freq_t;
+
+    typedef enum logic {YES=1'b1, NO=1'b0} status_t;
+    typedef enum logic {LEFT=1'b0, RIGHT=1'b1} channel_t;
+
+    typedef enum {IDLE, L, R, ERR} ws_state_t;
+
+    typedef struct packed {
+        standard_t standard; //I2S standard to be used (Phillips, MSB or LSB justified)
+        mode_t mode; //I2S mode, any combination of Master/Slave and Transmitter/Reciever
+        sample_rate_t sample_rate; //sample rate of the PCM encoder (44.1kHz or 48kHz)
+        word_size_t word_size; //no. of bits used by the PCM to encode each word (16, 24 or 32bits)
+        frame_size_t frame_size; //no. of bits being sent/recieved during a data transaction (16 ot 32 bits)
+        //NOTE: frame size has higher priority tha word size, meaning if word>frame then word's MSBs are automatically trimmed
+        //      if frame>word the remaining bits are zero-filled (MSBs or LSBs depending on the standard)
+        sys_freq_t sys_freq; //the systems main clock frequency
+        logic stereo, mclk_en, stop, mute, rst; //misc. options
+            //stop: while high stops the transmission (and reception) of data
+            //mute: when high mutes (convert to 0) the data being recieved
+            //mclk_en: when high master clock output is enabled
+            //stereo: indicates whether 2 channels are used (when high=stereo mode) ot just 1 (when low=mono mode)
+    } OP_t; OP_t OP;
+
 logic pclk, penable, pwrite;
 logic preset, temp_sclk;
 logic [31:0] paddr, pwdata, prdata;
-FL_t flags;
+logic [12:0] flags;
 wire sclk, mclk, ws, sd;
-OP_t OPtx ='{default: 0, standard: MSB, mode: ST, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
-OP_t OPrx ='{default: 0, standard: MSB, mode: MR, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
-OP_t OPmstr = '{default: 0, standard: MSB, mode: MT, word_size: w32bits, frame_size: f32bits, stereo: 1'b1};
+OP_t OPtx ='{default: 0, sys_freq: k32, standard: MSB, mode: MT, sample_rate: hz44, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
+OP_t OPrx ='{default: 0, sys_freq: k32, standard: MSB, mode: SR, sample_rate: hz44, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
+OP_t OPmstr = '{default: 0, sys_freq: k32, standard: MSB, mode: MT, sample_rate: hz44, word_size: w32bits, frame_size: f32bits, stereo: 1'b1};
 
 
 //Two of the same modules used, one is transmitting data while the other recieves it
@@ -76,7 +102,7 @@ endfunction
 
 always @(posedge pclk) begin
     if (OUTPUT_DATA.size() != $past(OUTPUT_DATA.size())) begin
-        $displayh("@%0t -- OUT: %p -- %b", $stime, OUTPUT_DATA[0:9], check_data(INPUT_DATA,OUTPUT_DATA, OPtx));
+        $displayh("@%0t -- %s", $stime, check_data(INPUT_DATA,OUTPUT_DATA, OPtx));
     end
 end
 //-------------------------------------------------------------------------
@@ -88,11 +114,12 @@ end
 //then a loop occures where data is inputted and outputted so the FIFOs dont empty/fill
 //in the end the transmission is stopped
 
-int loop=0, num_of_loops=9; //just some help vars for the looping
+int loop=0;
+localparam num_of_loops=9; //just some help vars for the looping
 
 initial begin
-    $displayh("initial IN: %p", INPUT_DATA[$-5*num_of_loops:$]);
-    $displayh("initial OUT: %p", OUTPUT_DATA);
+    // $displayh("initial IN: %p", INPUT_DATA);
+    // $displayh("initial OUT: %p", OUTPUT_DATA);
 
 
     temp_sclk <= 1'b0;
@@ -110,8 +137,11 @@ initial begin
     repeat (15) @(posedge pclk); 
 
     //starting data transmission
-    OPrx.stop <= 1'b0;
+    OPrx.stop <= 1'b0; OPtx.stop <= 1'b0;
     @(posedge pclk); paddr<=32'h20; pwdata<=OPrx;
+    @(posedge pclk); paddr<=32'h00; pwdata<=OPtx;
+    @(posedge pclk);
+
     
     //reading data being recieved first
     @(posedge pclk); paddr<=32'h32; pwrite<=1'b0;
@@ -177,7 +207,7 @@ initial begin
 
     //reading the last frame being transmitted 
     @(posedge pclk) paddr<=32'h32;pwrite<=1'b0;
-    
+    $finish;
     
 end
 

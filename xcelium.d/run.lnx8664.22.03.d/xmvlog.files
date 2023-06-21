@@ -1,0 +1,14 @@
+//
+// File created by:  xrun
+// Do not modify this file
+//
+/mnt/scratch_b/users/g/gkokkonis/I2S_transceiver/tb_top.sv
+/mnt/scratch_b/users/g/gkokkonis/I2S_transceiver/RTL/package.sv
+/mnt/scratch_b/users/g/gkokkonis/I2S_transceiver/RTL/I2S_top.sv
+/mnt/scratch_b/users/g/gkokkonis/I2S_transceiver/RTL/FIFOs.sv
+/mnt/scratch_b/users/g/gkokkonis/I2S_transceiver/RTL/freq_divider.sv
+/mnt/scratch_b/users/g/gkokkonis/I2S_transceiver/RTL/reg_interface.sv
+/mnt/scratch_b/users/g/gkokkonis/I2S_transceiver/RTL/reg_control.sv
+/mnt/scratch_b/users/g/gkokkonis/I2S_transceiver/RTL/ws_control.sv
+/mnt/scratch_b/users/g/gkokkonis/I2S_transceiver/RTL/ws_gen.sv
+/mnt/scratch_b/users/g/gkokkonis/I2S_transceiver/RTL/ws_tracker.sv

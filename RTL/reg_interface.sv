@@ -2,7 +2,7 @@ module reg_interface (
     input logic reg_wen, reg_ren, Tx_wen, Rx_ren,
     input logic pclk, preset, penable, pwrite,
     input logic [31:0] addr, pwdata, Rx_data,
-    logic [12:0] flags,
+    input logic [12:0] flags,
 
     output logic [31:0] prdata, Tx_data,
     output logic [14:0] controls);

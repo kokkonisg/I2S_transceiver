@@ -14,10 +14,10 @@ logic cntZ, RtoL, LtoR, RtoIDL, LtoIDL;
 
 always_ff @(negedge clk, negedge rst_) begin
     if (!rst_) begin
-        cnt <= 5'h0;
+        cnt <= 5'h1f;
     end else begin
         ws_old <= ws;
-        if (OP.mode inside {ST, SR} && cnt_en && !OP.stop) begin
+        if (OP.mode inside {ST, SR} && cnt_en) begin
             cnt <= cnt+1'b1;
         end    
     end

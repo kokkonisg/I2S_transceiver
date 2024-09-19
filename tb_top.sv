@@ -35,8 +35,8 @@ logic preset, temp_sclk;
 logic [31:0] paddr, pwdata, prdata;
 logic [12:0] flags;
 wire sclk, mclk, ws, sd;
-OP_t OPtx ='{default: 0, sys_freq: k32, standard: MSB, mode: MT, sample_rate: hz44, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
-OP_t OPrx ='{default: 0, sys_freq: k32, standard: MSB, mode: SR, sample_rate: hz44, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
+OP_t OPtx ='{default: 0, sys_freq: k32, standard: MSB, mode: ST, sample_rate: hz44, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
+OP_t OPrx ='{default: 0, sys_freq: k32, standard: MSB, mode: MR, sample_rate: hz44, word_size: w32bits, frame_size: f32bits, stereo: 1'b1, stop: 1'b1, rst:1'b1};
 OP_t OPmstr = '{default: 0, sys_freq: k32, standard: MSB, mode: MT, sample_rate: hz44, word_size: w32bits, frame_size: f32bits, stereo: 1'b1};
 
 
@@ -133,13 +133,12 @@ initial begin
     @(posedge pclk); penable<=1'b1; pwrite<=1'b1; paddr<=32'h20; pwdata<=OPrx;
 
     //first load of data in TxFIFO
-    @(posedge pclk) paddr<=32'h08; temp_sclk <= 1'bZ;
+    @(posedge pclk); paddr<=32'h08; temp_sclk <= 1'bZ;
     repeat (15) @(posedge pclk); 
 
     //starting data transmission
-    OPrx.stop <= 1'b0; OPtx.stop <= 1'b0;
+    OPrx.stop <= 1'b0;
     @(posedge pclk); paddr<=32'h20; pwdata<=OPrx;
-    @(posedge pclk); paddr<=32'h00; pwdata<=OPtx;
     @(posedge pclk);
 
     
